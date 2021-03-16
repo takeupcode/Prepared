@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeLite_Project Name="Prepared" Version="10.0.0" InternalType="Console">
+  <Plugins>
+    <Plugin Name="qmake">
+      <![CDATA[00010001N0005Debug000000000000]]>
+    </Plugin>
+  </Plugins>
+  <Description/>
+  <Dependencies/>
+  <VirtualDirectory Name="src">
+    <File Name="BehaviorCreature.cpp"/>
+    <File Name="BehaviorCreature.h"/>
+    <File Name="BehaviorNPC.cpp"/>
+    <File Name="BehaviorNPC.h"/>
+    <File Name="BehaviorPC.cpp"/>
+    <File Name="BehaviorPC.h"/>
+    <File Name="Behavior.cpp"/>
+    <File Name="Behavior.h"/>
+    <File Name="CommandAttack.cpp"/>
+    <File Name="CommandAttack.h"/>
+    <File Name="CommandWait.cpp"/>
+    <File Name="CommandWait.h"/>
+    <File Name="CommandTurn.cpp"/>
+    <File Name="CommandTurn.h"/>
+    <File Name="CommandInventory.cpp"/>
+    <File Name="CommandInventory.h"/>
+    <File Name="CommandSelectCharacter.cpp"/>
+    <File Name="CommandSelectCharacter.h"/>
+    <File Name="GameStateInventory.cpp"/>
+    <File Name="GameStateInventory.h"/>
+    <File Name="GameStateEnding.cpp"/>
+    <File Name="GameStateEnding.h"/>
+    <File Name="GameStateExploring.cpp"/>
+    <File Name="GameStateExploring.h"/>
+    <File Name="GameStateStarting.cpp"/>
+    <File Name="GameStateStarting.h"/>
+    <File Name="Location.cpp"/>
+    <File Name="GameEvent.cpp"/>
+    <File Name="Direction.cpp"/>
+    <File Name="GameState.cpp"/>
+    <File Name="GameState.h"/>
+    <File Name="GameEvent.h"/>
+    <File Name="CommandQuit.cpp"/>
+    <File Name="CommandQuit.h"/>
+    <File Name="CommandMove.cpp"/>
+    <File Name="CommandMove.h"/>
+    <File Name="Command.h"/>
+    <File Name="Command.cpp"/>
+    <File Name="Prompt.cpp"/>
+    <File Name="Prompt.h"/>
+    <File Name="Game.cpp"/>
+    <File Name="Game.h"/>
+    <File Name="Display.cpp"/>
+    <File Name="Display.h"/>
+    <File Name="Direction.h"/>
+    <File Name="Location.h"/>
+    <File Name="Character.cpp"/>
+    <File Name="Character.h"/>
+    <File Name="Level.cpp"/>
+    <File Name="Level.h"/>
+    <File Name="Resource.cpp"/>
+    <File Name="Resource.h"/>
+    <File Name="Tile.cpp"/>
+    <File Name="Tile.h"/>
+    <File Name="main.cpp"/>
+  </VirtualDirectory>
+  <Settings Type="Executable">
+    <GlobalSettings>
+      <Compiler Options="-std=c++17" C_Options="" Assembler="">
+        <IncludePath Value="."/>
+      </Compiler>
+      <Linker Options="">
+        <LibraryPath Value="."/>
+      </Linker>
+      <ResourceCompiler Options=""/>
+    </GlobalSettings>
+    <Configuration Name="Debug" CompilerType="MinGW ( MinGW )" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-g;-O0;-Wall" C_Options="-g;-O0;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
+        <IncludePath Value="."/>
+      </Compiler>
+      <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Debug" Command="./$(ProjectName)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <BuildSystem Name="Default"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="no">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="no">
+        <RebuildCommand/>
+        <CleanCommand/>
+        <BuildCommand/>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+      <Completion EnableCpp11="no" EnableCpp14="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+    <Configuration Name="Release" CompilerType="MinGW ( MinGW )" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-O2;-Wall" C_Options="-O2;-Wall" Assembler="" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" PCHFlags="" PCHFlagsPolicy="0">
+        <IncludePath Value="."/>
+        <Preprocessor Value="NDEBUG"/>
+      </Compiler>
+      <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Release" Command="./$(ProjectName)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes" IsGUIProgram="no" IsEnabled="yes"/>
+      <BuildSystem Name="Default"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="" IsExtended="no">
+        <DebuggerSearchPaths/>
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="no">
+        <RebuildCommand/>
+        <CleanCommand/>
+        <BuildCommand/>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+      <Completion EnableCpp11="no" EnableCpp14="no">
+        <ClangCmpFlagsC/>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+  </Settings>
+</CodeLite_Project>

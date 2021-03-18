@@ -2,9 +2,24 @@
 
 #include "BehaviorCreature.h"
 #include "BehaviorPC.h"
+#include "ComponentAbilityAdjustment.h"
+#include "ComponentContainer.h"
+#include "ComponentConsumable.h"
+#include "ComponentDrawable.h"
+#include "ComponentEdible.h"
+#include "ComponentFindable.h"
+#include "ComponentGroupable.h"
+#include "ComponentIdentifiable.h"
+#include "ComponentLayer.h"
+#include "ComponentMoveable.h"
+#include "ComponentPhysical.h"
+#include "ComponentRegistry.h"
+#include "ComponentTradeable.h"
+#include "GameItemRegistry.h"
 #include "GameStateStarting.h"
-#include "Location.h"
+#include "Point.h"
 
+#include <algorithm>
 #include <chrono>
 #include <ctime>
 
@@ -13,7 +28,7 @@ Game::Game(
     std::istream & input,
     unsigned int seed)
 : mOutput(output), mInput(input),
-  mGameOver(false),
+  mGameOver(true),
   mPrompt(output, input),
   mSeed(seed),
   mPercent(0, 100)
@@ -31,10 +46,16 @@ void Game::play ()
 {
     mGameOver = false;
 
+    registerComponents();
+    registerGameItems();
+    registerLayers();
+
     mDisplay.reset(new Display(this));
 
     mLevel.reset(new Level(this));
     mLevel->generate();
+
+    setLayerCollisionsInLevel();
 
     mStates.push(std::unique_ptr<GameState>(
         new GameStateStarting(this)));
@@ -90,12 +111,12 @@ int Game::randomPercent ()
     return mPercent(mRNG);
 }
 
-std::vector<Character> & Game::characters ()
+std::vector<GameItem> & Game::characters ()
 {
     return mCharacters;
 }
 
-std::vector<Character> const & Game::characters () const
+std::vector<GameItem> const & Game::characters () const
 {
     return mCharacters;
 }
@@ -117,43 +138,73 @@ void Game::setDefaultCharacterId (int id)
     }
 }
 
-Character * Game::findCharacter (int id)
+GameItem * Game::findCharacter (int id)
 {
-    for (auto & character: mCharacters)
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+
+    if (id < ComponentIdentifiable::FirstInstanceId)
     {
-        if (character.id() == id)
+        for (auto & character: mCharacters)
         {
-            return &character;
+            if (identifiable->shortcutId(&character) == id)
+            {
+                return &character;
+            }
+        }
+    }
+    else
+    {
+        for (auto & character: mCharacters)
+        {
+            if (identifiable->instanceId(&character) == id)
+            {
+                return &character;
+            }
         }
     }
 
     return nullptr;
 }
 
-Character const * Game::findCharacter (int id) const
+GameItem const * Game::findCharacter (int id) const
 {
-    for (auto & character: mCharacters)
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+
+    if (id < ComponentIdentifiable::FirstInstanceId)
     {
-        if (character.id() == id)
+        for (auto & character: mCharacters)
         {
-            return &character;
+            if (identifiable->shortcutId(&character) == id)
+            {
+                return &character;
+            }
+        }
+    }
+    else
+    {
+        for (auto & character: mCharacters)
+        {
+            if (identifiable->instanceId(&character) == id)
+            {
+                return &character;
+            }
         }
     }
 
     return nullptr;
 }
 
-std::vector<Character> & Game::creatures ()
+std::vector<GameItem> & Game::creatures ()
 {
     return mCreatures;
 }
 
-std::vector<Character> const & Game::creatures () const
+std::vector<GameItem> const & Game::creatures () const
 {
     return mCreatures;
 }
 
-Character * Game::findCreature (int id)
+GameItem * Game::findCreature (int id)
 {
     for (auto & creature: mCreatures)
     {
@@ -166,7 +217,7 @@ Character * Game::findCreature (int id)
     return nullptr;
 }
 
-Character const * Game::findCreature (int id) const
+GameItem const * Game::findCreature (int id) const
 {
     for (auto & creature: mCreatures)
     {
@@ -190,36 +241,116 @@ std::vector<GameEvent> const & Game::events () const
 }
 
 void Game::spawnCharacters (
-    std::vector<Character> const & characters)
+    std::vector<GameItem> const & characters)
 {
     mCharacters.clear();
     mDefaultCharacterId = std::nullopt;
 
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     for (auto const & character: characters)
     {
         mCharacters.push_back(character);
 
-        addEvent(CharacterSpawned {character.id()});
+        addEvent(CharacterSpawned {identifiable->instanceId(&character)});
     }
 
     placeCharacters();
 }
 
-void Game::placeCharacters ()
+void Game::setLayerCollisionsInLevel ()
 {
     if (mLevel == nullptr)
     {
         return;
     }
 
+    // Get the layer ids ready.
+    int animalsLayerId = 0;
+    int deepWaterLayerId = 0;
+    int nonPlayersLayerId = 0;
+    int playersLayerId = 0;
+    int solidsLayerId = 0;
+
+    GameItem * layerItem;
+    layerItem = GameItemRegistry::find("animals");
+    if (layerItem != nullptr)
+    {
+        animalsLayerId = layerItem->id();
+    }
+    layerItem = GameItemRegistry::find("deep water");
+    if (layerItem != nullptr)
+    {
+        deepWaterLayerId = layerItem->id();
+    }
+    layerItem = GameItemRegistry::find("non-player characters");
+    if (layerItem != nullptr)
+    {
+        nonPlayersLayerId = layerItem->id();
+    }
+    layerItem = GameItemRegistry::find("player characters");
+    if (layerItem != nullptr)
+    {
+        playersLayerId = layerItem->id();
+    }
+    layerItem = GameItemRegistry::find("solids");
+    if (layerItem != nullptr)
+    {
+        solidsLayerId = layerItem->id();
+    }
+
+    mLevel->setCollidingLayerIds(
+        playersLayerId,
+        {
+            animalsLayerId,
+            deepWaterLayerId,
+            nonPlayersLayerId,
+            playersLayerId,
+            solidsLayerId
+        });
+
+    mLevel->setCollidingLayerIds(
+        nonPlayersLayerId,
+        {
+            animalsLayerId,
+            deepWaterLayerId,
+            nonPlayersLayerId,
+            playersLayerId,
+            solidsLayerId
+        });
+
+    mLevel->setCollidingLayerIds(
+        animalsLayerId,
+        {
+            animalsLayerId,
+            deepWaterLayerId,
+            nonPlayersLayerId,
+            playersLayerId,
+            solidsLayerId
+        });
+}
+
+void Game::placeCharacters ()
+{
+    if (mLevel == nullptr || mDisplay == nullptr)
+    {
+        return;
+    }
+
     auto locations = mLevel->entryLocations(mCharacters.size());
+
+    auto moveable = ComponentRegistry::find<ComponentMoveable>();
 
     unsigned int i = 0;
     for (auto & character: mCharacters)
     {
-        character.setLocation(locations[i]);
+        moveable->setLocation(&character, locations[i]);
         ++i;
     }
+
+    mDisplay->ensureVisibleInMap(
+        locations[0],
+        mLevel->width(),
+        mLevel->height());
 }
 
 void Game::spawnCreatures ()
@@ -230,6 +361,25 @@ void Game::spawnCreatures ()
     }
 
     mCreatures = mLevel->spawnCreatures();
+}
+
+void Game::addLayer (int layerId)
+{
+    if (std::find(mLayerIds.cbegin(), mLayerIds.cend(), layerId) ==
+        mLayerIds.cend())
+    {
+        mLayerIds.push_back(layerId);
+    }
+}
+
+void Game::removeLayer (int layerId)
+{
+    mLayerIds.erase(std::find(mLayerIds.cbegin(), mLayerIds.cend(), layerId));
+}
+
+std::vector<int> Game::layers () const
+{
+    return mLayerIds;
 }
 
 void Game::operator () (GameState::Unknown & action)
@@ -323,4 +473,151 @@ void Game::draw ()
     }
 
     mStates.top()->draw();
+}
+
+void Game::registerComponents ()
+{
+    ComponentRegistry::clear();
+
+    ComponentAbilityAdjustment ability;
+    ComponentConsumable consumable;
+    ComponentContainer container;
+    ComponentDrawable drawable;
+    ComponentEdible edible;
+    ComponentFindable findable;
+    ComponentGroupable groupable;
+    ComponentIdentifiable identifiable;
+    ComponentLayer layer;
+    ComponentMoveable moveable;
+    ComponentPhysical physical;
+    ComponentTradeable tradeable;
+
+    ComponentRegistry::add(ability);
+    ComponentRegistry::add(consumable);
+    ComponentRegistry::add(container);
+    ComponentRegistry::add(drawable);
+    ComponentRegistry::add(edible);
+    ComponentRegistry::add(findable);
+    ComponentRegistry::add(groupable);
+    ComponentRegistry::add(identifiable);
+    ComponentRegistry::add(layer);
+    ComponentRegistry::add(moveable);
+    ComponentRegistry::add(physical);
+    ComponentRegistry::add(tradeable);
+}
+
+void Game::registerGameItems ()
+{
+    GameItemRegistry::clear();
+
+    auto groupable = ComponentRegistry::find<ComponentGroupable>();
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+
+    auto gameItem = GameItemRegistry::add("character");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "character");
+
+    gameItem = GameItemRegistry::add("rat");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "rat");
+
+    gameItem = GameItemRegistry::add("tile");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "tile");
+
+    gameItem = GameItemRegistry::add("gold");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "gold");
+
+    gameItem = GameItemRegistry::add("silver");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "silver");
+
+    gameItem = GameItemRegistry::add("red apple");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "red apple");
+
+    gameItem = GameItemRegistry::add("torch");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "torch");
+    gameItem->addComponent(groupable->id());
+    groupable->setPropertyNames(gameItem, {"percentageRemainingEstimate"});
+}
+
+void Game::registerLayers ()
+{
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+
+    auto gameItem = GameItemRegistry::add("deep water");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "deep water");
+    addLayer(gameItem->id());
+
+    gameItem = GameItemRegistry::add("shallow water");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "shallow water");
+    addLayer(gameItem->id());
+
+    gameItem = GameItemRegistry::add("land");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "land");
+    addLayer(gameItem->id());
+
+    gameItem = GameItemRegistry::add("solids");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "solids");
+    addLayer(gameItem->id());
+
+    gameItem = GameItemRegistry::add("player characters");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "player characters");
+    addLayer(gameItem->id());
+
+    gameItem = GameItemRegistry::add("non-player characters");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "non-player characters");
+    addLayer(gameItem->id());
+
+    gameItem = GameItemRegistry::add("animals");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "animals");
+    addLayer(gameItem->id());
+
+    gameItem = GameItemRegistry::add("flying");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "flying");
+    addLayer(gameItem->id());
+}
+
+GameItem Game::createRat () const
+{
+    auto drawable = ComponentRegistry::find<ComponentDrawable>();
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+    auto layer = ComponentRegistry::find<ComponentLayer>();
+    auto moveable = ComponentRegistry::find<ComponentMoveable>();
+
+    auto registeredItem = GameItemRegistry::find("rat");
+    GameItem rat(registeredItem->id());
+
+    rat.addComponent(drawable->id());
+    drawable->setSymbol(&rat, 'a');
+
+    rat.addComponent(identifiable->id());
+    identifiable->setUniqueInstanceId(&rat);
+
+    int animalsLayerId = 0;
+    GameItem * layerItem;
+    layerItem = GameItemRegistry::find("animals");
+    if (layerItem != nullptr)
+    {
+        animalsLayerId = layerItem->id();
+    }
+
+    rat.addComponent(layer->id());
+    layer->setLayerId(&rat, animalsLayerId);
+
+    rat.addComponent(moveable->id());
+    // The actual location will be set later.
+
+    return rat;
 }

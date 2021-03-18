@@ -142,7 +142,8 @@ std::string Prompt::promptText (
     mOutput << prompt;
 
     std::string input;
-    mInput >> input;
+
+    std::getline(mInput, input);
 
     if (!makeUpperCase)
     {

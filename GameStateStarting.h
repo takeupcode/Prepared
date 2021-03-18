@@ -1,7 +1,8 @@
 #ifndef GAMESTATESTARTING_H
 #define GAMESTATESTARTING_H
 
-#include "Character.h"
+#include "GameEvent.h"
+#include "GameItem.h"
 #include "GameState.h"
 
 #include <vector>
@@ -24,7 +25,9 @@ public:
     { }
 
 private:
-    std::vector<Character> mCharacters;
+    GameItem createCharacter (char symbol) const;
+
+    std::vector<GameItem> mCharacters;
 };
 
 #endif // GAMESTATESTARTING_H

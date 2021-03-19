@@ -1,28 +1,54 @@
 #include "GameStateStarting.h"
 
+#include "ComponentConsumable.h"
+#include "ComponentDrawable.h"
+#include "ComponentIdentifiable.h"
+#include "ComponentLayer.h"
+#include "ComponentMoveable.h"
+#include "ComponentRegistry.h"
 #include "Game.h"
+#include "GameItemRegistry.h"
 #include "GameStateExploring.h"
 
 #include <iomanip>
 
-Character createCharacter (
-    Game * game,
-    int id,
-    char symbol)
-{
-    Behavior * behavior = game->playerCharacterBehavior();
-    Character character(id, symbol, behavior);
-    character.setMaxHealth(20, false);
-    character.setCurrentHealth(20, false);
-    character.setAttackDamage(4);
-
-    return character;
-}
-
 GameStateStarting::GameStateStarting (Game * game)
 : GameState(game)
 {
-    mCharacters.push_back(createCharacter(game, 1, '1'));
+    mCharacters.push_back(createCharacter('1'));
+
+    auto consumable = ComponentRegistry::find<ComponentConsumable>();
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+
+    auto registeredGameItem = GameItemRegistry::find("gold");
+    if (registeredGameItem != nullptr)
+    {
+        GameItem gameItem(registeredGameItem->id());
+
+        gameItem.addComponent(identifiable->id());
+
+        identifiable->setCount(&gameItem, 10);
+
+        mCharacters.back().items().push_back(gameItem);
+    }
+
+    registeredGameItem = GameItemRegistry::find("torch");
+    if (registeredGameItem != nullptr)
+    {
+        GameItem gameItem(registeredGameItem->id());
+
+        gameItem.addComponent(identifiable->id());
+        gameItem.addComponent(consumable->id());
+
+        identifiable->setUniqueInstanceId(&gameItem);
+        consumable->setPercentageRemaining(&gameItem, 100.0);
+
+        mCharacters.back().items().push_back(gameItem);
+
+        identifiable->setUniqueInstanceId(&gameItem);
+
+        mCharacters.back().items().push_back(gameItem);
+    }
 }
 
 GameState::StateAction GameStateStarting::processInput ()
@@ -34,7 +60,7 @@ GameState::StateAction GameStateStarting::processInput ()
     {
     case 1:
         mGame->spawnCharacters(mCharacters);
-        mGame->setDefaultCharacterId(mCharacters[0].id());
+        mGame->setDefaultCharacterId(1);
         mGame->spawnCreatures();
         return GameState::Swap {std::unique_ptr<GameState>(
             new GameStateExploring(mGame))};
@@ -43,8 +69,6 @@ GameState::StateAction GameStateStarting::processInput ()
         std::string inputString = mGame->prompt().promptText(
             "Enter symbol for new character: ");
         mCharacters.push_back(createCharacter(
-            mGame,
-            mCharacters.size() + 1,
             inputString[0]));
         break;
     }
@@ -72,14 +96,53 @@ void GameStateStarting::draw ()
 
     mGame->output() << std::setw(10) << "Character"
         << std::setw(10) << "Symbol" << std::endl;
+
+    auto drawable = ComponentRegistry::find<ComponentDrawable>();
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     for (auto const & character: mCharacters)
     {
-        mGame->output() << std::setw(10) << character.id()
-            << std::setw(10) << character.symbol() << std::endl;
+        mGame->output()
+            << std::setw(10) << identifiable->shortcutId(&character)
+            << std::setw(10) << drawable->symbol(&character)
+            << std::endl;
     }
 
     mGame->output() << std::endl;
     mGame->output() << "1. Play game." << std::endl;
     mGame->output() << "2. Add character." << std::endl;
     mGame->output() << std::endl;
+}
+
+GameItem GameStateStarting::createCharacter (char symbol) const
+{
+    auto drawable = ComponentRegistry::find<ComponentDrawable>();
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+    auto layer = ComponentRegistry::find<ComponentLayer>();
+    auto moveable = ComponentRegistry::find<ComponentMoveable>();
+
+    auto registeredCharacter = GameItemRegistry::find("character");
+    GameItem character(registeredCharacter->id());
+
+    character.addComponent(drawable->id());
+    drawable->setSymbol(&character, symbol);
+
+    character.addComponent(identifiable->id());
+    identifiable->setUniqueInstanceId(&character);
+    identifiable->setShortcutId(&character, static_cast<int>(mCharacters.size()) + 1);
+
+    int playersLayerId = 0;
+    GameItem * layerItem;
+    layerItem = GameItemRegistry::find("player characters");
+    if (layerItem != nullptr)
+    {
+        playersLayerId = layerItem->id();
+    }
+
+    character.addComponent(layer->id());
+    layer->setLayerId(&character, playersLayerId);
+
+    character.addComponent(moveable->id());
+    // The actual location will be set later.
+
+    return character;
 }

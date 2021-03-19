@@ -1,13 +1,18 @@
 #ifndef GAMEEVENT_H
 #define GAMEEVENT_H
 
-#include "Location.h"
+#include "Point.h"
 
 #include <variant>
 
 struct CharacterSpawned
 {
     int characterId;
+};
+
+struct CreatureSpawned
+{
+    int creatureId;
 };
 
 struct CharacterMoved
@@ -29,6 +34,7 @@ struct CreatureHit
 
 using GameEvent = std::variant<
     CharacterSpawned,
+    CreatureSpawned,
     CharacterMoved,
     CharacterHit,
     CreatureHit

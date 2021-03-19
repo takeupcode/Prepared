@@ -1,9 +1,9 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include "Character.h"
 #include "Display.h"
 #include "GameEvent.h"
+#include "GameItem.h"
 #include "GameState.h"
 #include "Level.h"
 #include "Prompt.h"
@@ -44,29 +44,33 @@ public:
 
     int randomPercent ();
 
-    std::vector<Character> & characters ();
-    std::vector<Character> const & characters () const;
+    std::vector<GameItem> & characters ();
+    std::vector<GameItem> const & characters () const;
 
     std::optional<int> defaultCharacterId () const;
     void setDefaultCharacterId (int id);
 
-    Character * findCharacter (int id);
-    Character const * findCharacter (int id) const;
+    GameItem * findCharacter (int id);
+    GameItem const * findCharacter (int id) const;
 
-    std::vector<Character> & creatures ();
-    std::vector<Character> const & creatures () const;
+    std::vector<GameItem> & creatures ();
+    std::vector<GameItem> const & creatures () const;
 
-    Character * findCreature (int id);
-    Character const * findCreature (int id) const;
+    GameItem * findCreature (int id);
+    GameItem const * findCreature (int id) const;
 
     void addEvent (GameEvent const & event);
 
     std::vector<GameEvent> const & events () const;
 
     void spawnCharacters (
-        std::vector<Character> const & characters);
+        std::vector<GameItem> const & characters);
 
     void spawnCreatures ();
+
+    void addLayer (int layerId);
+    void removeLayer (int layerId);
+    std::vector<int> layers () const;
 
     void operator () (GameState::Unknown & action);
 
@@ -91,16 +95,25 @@ private:
 
     void draw ();
 
+    void registerComponents ();
+    void registerGameItems ();
+    void registerLayers ();
+
+    void setLayerCollisionsInLevel ();
+
     void placeCharacters ();
+
+    GameItem createRat () const;
 
     std::ostream & mOutput;
     std::istream & mInput;
     bool mGameOver;
     Prompt mPrompt;
     std::optional<int> mDefaultCharacterId;
-    std::vector<Character> mCharacters;
-    std::vector<Character> mCreatures;
+    std::vector<GameItem> mCharacters;
+    std::vector<GameItem> mCreatures;
     std::vector<GameEvent> mEvents;
+    std::vector<int> mLayerIds;
     std::stack<std::unique_ptr<GameState>> mStates;
     std::unique_ptr<Display> mDisplay;
     std::unique_ptr<Level> mLevel;

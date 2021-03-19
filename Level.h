@@ -1,10 +1,10 @@
 #ifndef LEVEL_H
 #define LEVEL_H
 
-#include "Character.h"
-#include "Location.h"
-#include "Tile.h"
+#include "GameItem.h"
+#include "Point.h"
 
+#include <unordered_map>
 #include <vector>
 
 class Game;
@@ -12,30 +12,47 @@ class Game;
 class Level
 {
 public:
-    Level (Game * game);
+    Level (Game * game, int seed = 0);
 
     void generate ();
 
     void draw () const;
 
-    std::vector<Location> entryLocations (
+    std::vector<Point> entryLocations (
         unsigned int count) const;
 
-    std::vector<Character> spawnCreatures () const;
+    std::vector<GameItem> spawnCreatures () const;
 
-    Location calculateMoveLocation (
-        Location const & current,
-        Location const & proposed) const;
+    Point calculateMoveLocation (
+        Point const & current,
+        Point const & proposed,
+        int moveLayerId) const;
 
-    Tile * findTile (Location const & location);
-    Tile const * findTile (Location const & location) const;
+    GameItem * findTile (Point const & location);
+    GameItem const * findTile (Point const & location) const;
+
+    int width ();
+    int height ();
+
+    std::vector<int> collidingLayerIds (int layerId);
+
+    void setCollidingLayerIds (
+        int layerId,
+        std::vector<int> const & collidingLayers);
+
+    Point findRandomLocationOnLand () const;
 
 private:
+    GameItem createTile (char symbol, int layerId) const;
+
     Game * mGame;
+    int mSeed;
     unsigned int mWidth;
     unsigned int mHeight;
-    std::vector<Tile> mTiles;
-    std::vector<Location> mEntryLocations;
+    std::vector<GameItem> mTiles;
+    std::vector<Point> mEntryLocations;
+    std::unordered_map<int, GameItem> mLayeredTiles;
+    std::unordered_map<int, std::vector<int>> mCollidingLayerIds;
 };
 
 #endif // LEVEL_H

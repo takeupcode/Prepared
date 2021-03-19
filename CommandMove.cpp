@@ -1,7 +1,40 @@
 #include "CommandMove.h"
 
-#include "Character.h"
+#include "ComponentIdentifiable.h"
+#include "ComponentLayer.h"
+#include "ComponentMoveable.h"
+#include "ComponentRegistry.h"
+#include "Display.h"
 #include "Game.h"
+
+Point calculateProposedLocation (Point current,
+    Direction direction,
+    int distance = 1)
+{
+    switch (direction)
+    {
+    case Direction::North:
+        current.y -= distance;
+        break;
+
+    case Direction::South:
+        current.y += distance;
+        break;
+
+    case Direction::West:
+        current.x -= distance;
+        break;
+
+    case Direction::East:
+        current.x += distance;
+        break;
+
+    default:
+        break;
+    }
+
+    return current;
+}
 
 CommandMove::CommandMove (
     Direction direction,
@@ -102,15 +135,27 @@ GameState::StateAction CommandMove::execute (Game * game) const
         return GameState::Keep {};
     }
 
-    if (character->move(game->level(), mDirection))
-    {
-        game->addEvent(CharacterMoved {
-            character->id()});
-    }
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+    auto layer = ComponentRegistry::find<ComponentLayer>();
+    auto moveable = ComponentRegistry::find<ComponentMoveable>();
 
-    if (mTurn)
+    auto layerId = layer->layerId(character);
+    auto currentLocation = moveable->location(character);
+    auto proposedLocation = calculateProposedLocation(currentLocation, mDirection);
+    auto moveLocation = game->level()->calculateMoveLocation(
+        currentLocation, proposedLocation, layerId);
+
+    if (currentLocation != moveLocation)
     {
-        character->setDirection(mDirection);
+        moveable->setLocation(character, moveLocation);
+
+        game->display()->ensureVisibleInMap(
+            moveLocation,
+            game->level()->width(),
+            game->level()->height());
+
+        int instanceId = identifiable->instanceId(character);
+        game->addEvent(CharacterMoved {instanceId, currentLocation, moveLocation});
     }
 
     return GameState::Keep {};

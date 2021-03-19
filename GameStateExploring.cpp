@@ -7,7 +7,12 @@
 #include "CommandSelectCharacter.h"
 #include "CommandTurn.h"
 #include "CommandWait.h"
+#include "ComponentDrawable.h"
+#include "ComponentIdentifiable.h"
+#include "ComponentRegistry.h"
 #include "Game.h"
+#include "GameItem.h"
+#include "GameItemRegistry.h"
 
 #include <algorithm>
 
@@ -17,8 +22,14 @@ GameStateExploring::GameStateExploring (Game * game)
 
 GameState::StateAction GameStateExploring::processInput ()
 {
+    static std::string lastInputString = "";
     std::string inputString = mGame->prompt().promptText(
         "Enter command: ", true);
+    if (inputString.empty() && !lastInputString.empty())
+    {
+        inputString = lastInputString;
+    }
+    lastInputString = inputString;
 
     std::unique_ptr<Command> command;
 
@@ -97,14 +108,15 @@ void GameStateExploring::draw ()
 
     mGame->level()->draw();
 
+    auto drawable = ComponentRegistry::find<ComponentDrawable>();
     for (auto const & character: mGame->characters())
     {
-        character.draw(*display);
+        drawable->draw(&character, display);
     }
 
     for (auto const & creature: mGame->creatures())
     {
-        creature.draw(*display);
+        drawable->draw(&creature, display);
     }
 
     display->update();
@@ -124,25 +136,38 @@ void GameStateExploring::operator () (
 
     display->beginStreamingToDialog();
 
+    auto drawable = ComponentRegistry::find<ComponentDrawable>();
+    char symbol = drawable->symbol(character);
     display->dialogBuffer()
-        << "Character " << character->symbol() << " moved.";
+        << "Character " << symbol << " moved.";
 
     auto tile = mGame->level()->findTile(
         character->location());
     if (tile != nullptr)
     {
-        for (auto & resource: tile->resources())
+        auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+        for (auto & item: tile->items())
         {
-            if (!resource.foundCount())
+            auto foundCount = identifiable->foundCount(&item);
+            if (!foundCount)
             {
-                resource.setFoundCount(resource.possibleCount());
+                foundCount = identifiable->possibleCount(&item);
+                identifiable->setFoundCount(&item, foundCount);
             }
+
+            auto itemName = identifiable->name(&item);
+            if (itemName.empty())
+            {
+                continue;
+            }
+
+            auto value = identifiable->value(&item);
 
             display->dialogBuffer()
                 << " And found "
-                << resource.foundCount().value()
-                << " " << resource.name()
-                << " worth " << resource.valueOfEach() << " each.";
+                << foundCount.value()
+                << " " << itemName
+                << " worth " << value << " each.";
         }
     }
 

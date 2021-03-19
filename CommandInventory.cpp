@@ -59,6 +59,6 @@ GameState::StateAction CommandInventory::execute (
     return GameState::Push {
         std::unique_ptr<GameState>(new GameStateInventory(
             game,
-            character->id()))
+            characterId.value()))
         };
 }

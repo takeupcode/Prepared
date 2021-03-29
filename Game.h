@@ -97,8 +97,6 @@ private:
 
     void placeCharacters ();
 
-    GameItem createRat () const;
-
     std::ostream & mOutput;
     std::istream & mInput;
     bool mGameOver;

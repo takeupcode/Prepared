@@ -15,6 +15,18 @@ public:
         return PermanentId;
     }
 
+    bool foundCountValid (
+        GameItem const * gameItem,
+        bool defaultValue = false) const;
+
+    unsigned int foundCount (
+        GameItem const * gameItem,
+        unsigned int defaultValue = 0) const;
+
+    void setFoundCount (
+        GameItem * gameItem,
+        unsigned int value);
+
     unsigned int targetCount (
         GameItem const * gameItem,
         unsigned int defaultValue = 0) const;

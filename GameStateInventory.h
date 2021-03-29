@@ -18,6 +18,8 @@ public:
 
     StateAction processInput () override;
 
+    void processUpdate () override;
+
     void processEvents () override;
 
     void draw () override;

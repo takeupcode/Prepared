@@ -2,6 +2,7 @@
 #define COMPONENTLOCATEABLE_H
 
 #include "Component.h"
+#include "Direction.h"
 #include "Point.h"
 
 class ComponentLocateable : public Component
@@ -23,6 +24,14 @@ public:
     void setLocation (
         GameItem * gameItem,
         Point const & value);
+
+    Direction direction (
+        GameItem const * gameItem,
+        Direction defaultValue = Direction::North) const;
+
+    void setDirection (
+        GameItem * gameItem,
+        Direction value);
 
 private:
     ComponentLocateable (int id)

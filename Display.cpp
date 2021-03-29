@@ -1,5 +1,9 @@
 #include "Display.h"
 
+#include "ComponentDrawable.h"
+#include "ComponentHealth.h"
+#include "ComponentLocateable.h"
+#include "ComponentRegistry.h"
 #include "Game.h"
 
 #include <algorithm>
@@ -32,22 +36,27 @@ void Display::update ()
 
     mGame->output() << "----------------------------" << std::endl;
 
+    auto drawable = ComponentRegistry::find<ComponentDrawable>();
     mGame->output() << "Character ";
     for (auto const & character: mGame->characters())
     {
-        mGame->output() << std::setw(5) << character.symbol();
+        mGame->output() << std::setw(5) << drawable->symbol(&character);
     }
     mGame->output() << std::endl;
+
+    auto health = ComponentRegistry::find<ComponentHealth>();
     mGame->output() << "Health    ";
     for (auto const & character: mGame->characters())
     {
-        mGame->output() << std::setw(5) << character.currentHealth();
+        mGame->output() << std::setw(5) << health->health(&character);
     }
     mGame->output() << std::endl;
+
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
     mGame->output() << "Direction ";
     for (auto const & character: mGame->characters())
     {
-        char symbol = directionSymbol(character.direction());
+        char symbol = directionSymbol(locateable->direction(&character));
         mGame->output() << std::setw(5) << symbol;
     }
     mGame->output() << std::endl;

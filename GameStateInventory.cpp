@@ -72,6 +72,10 @@ GameState::StateAction GameStateInventory::processInput ()
     return GameState::Keep {};
 }
 
+void GameStateInventory::processUpdate ()
+{
+}
+
 void GameStateInventory::processEvents ()
 {
     for (auto const & event: mGame->events())

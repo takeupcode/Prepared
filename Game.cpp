@@ -358,7 +358,7 @@ void Game::spawnCreatures ()
         return;
     }
 
-    mCreatures = mLevel->spawnCreatures();
+    mLevel->spawnCreatures();
 }
 
 void Game::addLayer (int layerId)
@@ -571,37 +571,4 @@ void Game::registerLayers ()
     gameItem->addComponent(identifiable->id());
     identifiable->setName(gameItem, "flying");
     addLayer(gameItem->id());
-}
-
-GameItem Game::createRat () const
-{
-    auto drawable = ComponentRegistry::find<ComponentDrawable>();
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-    auto layer = ComponentRegistry::find<ComponentLayer>();
-    auto locateable = ComponentRegistry::find<ComponentLocateable>();
-
-    auto registeredItem = GameItemRegistry::find("rat");
-    GameItem rat(registeredItem->id());
-
-    rat.addComponent(drawable->id());
-    drawable->setSymbol(&rat, 'a');
-
-    rat.addComponent(identifiable->id());
-    identifiable->setUniqueInstanceId(&rat);
-
-    int animalsLayerId = 0;
-    GameItem * layerItem;
-    layerItem = GameItemRegistry::find("animals");
-    if (layerItem != nullptr)
-    {
-        animalsLayerId = layerItem->id();
-    }
-
-    rat.addComponent(layer->id());
-    layer->setLayerId(&rat, animalsLayerId);
-
-    rat.addComponent(locateable->id());
-    // The actual location will be set later.
-
-    return rat;
 }

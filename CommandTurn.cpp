@@ -1,6 +1,7 @@
 #include "CommandTurn.h"
 
-#include "Character.h"
+#include "ComponentLocateable.h"
+#include "ComponentRegistry.h"
 #include "Game.h"
 
 CommandTurn::CommandTurn (
@@ -75,7 +76,8 @@ GameState::StateAction CommandTurn::execute (Game * game) const
         return GameState::Keep {};
     }
 
-    character->setDirection(mDirection);
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
+    locateable->setDirection(character, mDirection);
 
     return GameState::Keep {};
 }

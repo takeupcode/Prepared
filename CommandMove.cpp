@@ -155,7 +155,7 @@ GameState::StateAction CommandMove::execute (Game * game) const
             game->level()->height());
 
         int instanceId = identifiable->instanceId(character);
-        game->addEvent(CharacterMoved {instanceId, currentLocation, moveLocation});
+        game->addEvent(CharacterMoved {instanceId});
     }
 
     return GameState::Keep {};

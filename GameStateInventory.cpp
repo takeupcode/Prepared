@@ -3,7 +3,7 @@
 #include "ComponentDrawable.h"
 #include "ComponentGroupable.h"
 #include "ComponentIdentifiable.h"
-#include "ComponentMoveable.h"
+#include "ComponentLocateable.h"
 #include "ComponentRegistry.h"
 #include "Game.h"
 #include "GameItem.h"
@@ -34,8 +34,8 @@ GameStateInventory::GameStateInventory (
 
     auto level = mGame->level();
 
-    auto moveable = ComponentRegistry::find<ComponentMoveable>();
-    Point location = moveable->location(mCharacter);
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
+    Point location = locateable->location(mCharacter);
 
     if (level != nullptr)
     {

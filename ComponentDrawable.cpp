@@ -1,7 +1,7 @@
 #include "ComponentDrawable.h"
 
 #include "ComponentIdentifiable.h"
-#include "ComponentMoveable.h"
+#include "ComponentLocateable.h"
 #include "ComponentRegistry.h"
 #include "Display.h"
 #include "Game.h"
@@ -13,8 +13,8 @@ void ComponentDrawable::draw (GameItem const * gameItem, Display * display) cons
 {
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
 
-    auto moveable = ComponentRegistry::find<ComponentMoveable>();
-    Point location = moveable->location(gameItem);
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
+    Point location = locateable->location(gameItem);
 
     char symbol = ComponentDrawable::symbol(gameItem);
 

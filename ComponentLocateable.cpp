@@ -1,10 +1,10 @@
-#include "ComponentMoveable.h"
+#include "ComponentLocateable.h"
 
 #include "GameItem.h"
 
-std::string const ComponentMoveable::PermanentId = "moveable";
+std::string const ComponentLocateable::PermanentId = "locateable";
 
-Point ComponentMoveable::location (
+Point ComponentLocateable::location (
     GameItem const * gameItem,
     Point const & defaultValue) const
 {
@@ -16,7 +16,7 @@ Point ComponentMoveable::location (
     return result;
 }
 
-void ComponentMoveable::setLocation (
+void ComponentLocateable::setLocation (
     GameItem * gameItem,
     Point const & value)
 {
@@ -24,7 +24,7 @@ void ComponentMoveable::setLocation (
     setDirectValue<int, int>(gameItem, "y", value.y);
 }
 
-std::unique_ptr<Component> ComponentMoveable::clone (int id) const
+std::unique_ptr<Component> ComponentLocateable::clone (int id) const
 {
-    return std::unique_ptr<Component>(new ComponentMoveable(id));
+    return std::unique_ptr<Component>(new ComponentLocateable(id));
 }

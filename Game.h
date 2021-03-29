@@ -16,8 +16,6 @@
 #include <stack>
 #include <vector>
 
-class Behavior;
-
 class Game
 {
 public:
@@ -81,10 +79,6 @@ public:
     void operator () (GameState::Push & action);
 
     void operator () (GameState::Pop & action);
-
-    Behavior * playerCharacterBehavior () const;
-
-    Behavior * creatureBehavior () const;
 
 private:
     GameState::StateAction processInput ();

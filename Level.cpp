@@ -236,14 +236,14 @@ std::vector<Character> Level::spawnCreatures () const
     creatures.back().setAttackDamage(4);
 
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-    auto moveable = ComponentRegistry::find<ComponentMoveable>();
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
 
     for (int i = 0; i < 10; ++i)
     {
         auto creature = createRat();
 
         auto location = mLevel->findRandomLocationOnLand();
-        moveable->setLocation(&creature, location);
+        locateable->setLocation(&creature, location);
 
         addEvent(CreatureSpawned {identifiable->instanceId(&creature)});
     }

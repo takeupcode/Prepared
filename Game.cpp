@@ -1,7 +1,5 @@
 #include "Game.h"
 
-#include "BehaviorCreature.h"
-#include "BehaviorPC.h"
 #include "ComponentAbilityAdjustment.h"
 #include "ComponentContainer.h"
 #include "ComponentConsumable.h"
@@ -11,7 +9,7 @@
 #include "ComponentGroupable.h"
 #include "ComponentIdentifiable.h"
 #include "ComponentLayer.h"
-#include "ComponentMoveable.h"
+#include "ComponentLocateable.h"
 #include "ComponentPhysical.h"
 #include "ComponentRegistry.h"
 #include "ComponentTradeable.h"
@@ -338,12 +336,12 @@ void Game::placeCharacters ()
 
     auto locations = mLevel->entryLocations(mCharacters.size());
 
-    auto moveable = ComponentRegistry::find<ComponentMoveable>();
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
 
     unsigned int i = 0;
     for (auto & character: mCharacters)
     {
-        moveable->setLocation(&character, locations[i]);
+        locateable->setLocation(&character, locations[i]);
         ++i;
     }
 
@@ -419,20 +417,6 @@ void Game::operator () (GameState::Pop & action)
     mStates.pop();
 }
 
-Behavior * Game::playerCharacterBehavior () const
-{
-    static BehaviorPC behavior;
-
-    return &behavior;
-}
-
-Behavior * Game::creatureBehavior () const
-{
-    static BehaviorCreature behavior;
-
-    return &behavior;
-}
-
 GameState::StateAction Game::processInput ()
 {
     if (mStates.empty())
@@ -488,7 +472,7 @@ void Game::registerComponents ()
     ComponentGroupable groupable;
     ComponentIdentifiable identifiable;
     ComponentLayer layer;
-    ComponentMoveable moveable;
+    ComponentLocateable locateable;
     ComponentPhysical physical;
     ComponentTradeable tradeable;
 
@@ -501,7 +485,7 @@ void Game::registerComponents ()
     ComponentRegistry::add(groupable);
     ComponentRegistry::add(identifiable);
     ComponentRegistry::add(layer);
-    ComponentRegistry::add(moveable);
+    ComponentRegistry::add(locateable);
     ComponentRegistry::add(physical);
     ComponentRegistry::add(tradeable);
 }
@@ -594,7 +578,7 @@ GameItem Game::createRat () const
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     auto layer = ComponentRegistry::find<ComponentLayer>();
-    auto moveable = ComponentRegistry::find<ComponentMoveable>();
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
 
     auto registeredItem = GameItemRegistry::find("rat");
     GameItem rat(registeredItem->id());
@@ -616,7 +600,7 @@ GameItem Game::createRat () const
     rat.addComponent(layer->id());
     layer->setLayerId(&rat, animalsLayerId);
 
-    rat.addComponent(moveable->id());
+    rat.addComponent(locateable->id());
     // The actual location will be set later.
 
     return rat;

@@ -1,15 +1,16 @@
-#ifndef COMPONENTMOVEABLE_H
-#define COMPONENTMOVEABLE_H
+#ifndef COMPONENTLOCATEABLE_H
+#define COMPONENTLOCATEABLE_H
 
 #include "Component.h"
+#include "Direction.h"
 #include "Point.h"
 
-class ComponentMoveable : public Component
+class ComponentLocateable : public Component
 {
 public:
     static std::string const PermanentId;
 
-    ComponentMoveable () = default;
+    ComponentLocateable () = default;
 
     std::string permanentId () const override
     {
@@ -24,12 +25,20 @@ public:
         GameItem * gameItem,
         Point const & value);
 
+    Direction direction (
+        GameItem const * gameItem,
+        Direction defaultValue = Direction::North) const;
+
+    void setDirection (
+        GameItem * gameItem,
+        Direction value);
+
 private:
-    ComponentMoveable (int id)
+    ComponentLocateable (int id)
     : Component(id)
     { }
 
     std::unique_ptr<Component> clone (int id) const override;
 };
 
-#endif // COMPONENTMOVEABLE_H
+#endif // COMPONENTLOCATEABLE_H

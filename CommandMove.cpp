@@ -2,7 +2,7 @@
 
 #include "ComponentIdentifiable.h"
 #include "ComponentLayer.h"
-#include "ComponentMoveable.h"
+#include "ComponentLocateable.h"
 #include "ComponentRegistry.h"
 #include "Display.h"
 #include "Game.h"
@@ -137,17 +137,17 @@ GameState::StateAction CommandMove::execute (Game * game) const
 
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     auto layer = ComponentRegistry::find<ComponentLayer>();
-    auto moveable = ComponentRegistry::find<ComponentMoveable>();
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
 
     auto layerId = layer->layerId(character);
-    auto currentLocation = moveable->location(character);
+    auto currentLocation = locateable->location(character);
     auto proposedLocation = calculateProposedLocation(currentLocation, mDirection);
     auto moveLocation = game->level()->calculateMoveLocation(
         currentLocation, proposedLocation, layerId);
 
     if (currentLocation != moveLocation)
     {
-        moveable->setLocation(character, moveLocation);
+        locateable->setLocation(character, moveLocation);
 
         game->display()->ensureVisibleInMap(
             moveLocation,
@@ -155,7 +155,7 @@ GameState::StateAction CommandMove::execute (Game * game) const
             game->level()->height());
 
         int instanceId = identifiable->instanceId(character);
-        game->addEvent(CharacterMoved {instanceId, currentLocation, moveLocation});
+        game->addEvent(CharacterMoved {instanceId});
     }
 
     return GameState::Keep {};

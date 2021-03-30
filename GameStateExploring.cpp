@@ -8,8 +8,12 @@
 #include "CommandTurn.h"
 #include "CommandWait.h"
 #include "ComponentDrawable.h"
+#include "ComponentFindable.h"
+#include "ComponentHealth.h"
 #include "ComponentIdentifiable.h"
+#include "ComponentLocateable.h"
 #include "ComponentRegistry.h"
+#include "ComponentTradeable.h"
 #include "Game.h"
 #include "GameItem.h"
 #include "GameItemRegistry.h"
@@ -80,15 +84,6 @@ GameState::StateAction GameStateExploring::processInput ()
 
 void GameStateExploring::processUpdate ()
 {
-    for (auto & character: mGame->characters())
-    {
-        character.update(mGame);
-    }
-
-    for (auto & creature: mGame->creatures())
-    {
-        creature.update(mGame);
-    }
 }
 
 void GameStateExploring::processEvents ()
@@ -104,7 +99,7 @@ void GameStateExploring::draw ()
     auto display = mGame->display();
     display->clear();
 
-    mGame->output() << "----------------" << std::endl;
+    mGame->output() << "-------------------------------" << std::endl;
 
     mGame->level()->draw();
 
@@ -141,18 +136,39 @@ void GameStateExploring::operator () (
     display->dialogBuffer()
         << "Character " << symbol << " moved.";
 
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
     auto tile = mGame->level()->findTile(
-        character->location());
+        locateable->location(character));
     if (tile != nullptr)
     {
+        auto findable = ComponentRegistry::find<ComponentFindable>();
         auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+        auto tradeable = ComponentRegistry::find<ComponentTradeable>();
         for (auto & item: tile->items())
         {
-            auto foundCount = identifiable->foundCount(&item);
-            if (!foundCount)
+            auto foundCountValid = findable->foundCountValid(&item);
+            auto foundCount = findable->foundCount(&item);
+            if (!foundCountValid)
             {
-                foundCount = identifiable->possibleCount(&item);
-                identifiable->setFoundCount(&item, foundCount);
+                auto targetCount = findable->targetCount(&item);
+                auto chanceOfFinding = findable->chanceOfFinding(&item);
+                auto percent = mGame->randomPercent();
+                if (percent <= chanceOfFinding)
+                {
+                    if (targetCount == 1)
+                    {
+                        foundCount = 1;
+                    }
+                    else
+                    {
+                        foundCount = targetCount * percent / 100;
+                    }
+                }
+                else
+                {
+                    foundCount = 0;
+                }
+                findable->setFoundCount(&item, foundCount);
             }
 
             auto itemName = identifiable->name(&item);
@@ -161,13 +177,14 @@ void GameStateExploring::operator () (
                 continue;
             }
 
-            auto value = identifiable->value(&item);
+            auto value = tradeable->value(&item);
 
             display->dialogBuffer()
                 << " And found "
-                << foundCount.value()
+                << foundCount
                 << " " << itemName
-                << " worth " << value << " each.";
+                << " worth " << value
+                << ((foundCount > 1) ? " each." : ".");
         }
     }
 
@@ -189,11 +206,13 @@ void GameStateExploring::operator () (
 
     display->beginStreamingToDialog();
 
+    auto drawable = ComponentRegistry::find<ComponentDrawable>();
     display->dialogBuffer()
-        << "Character " << character->symbol()
+        << "Character " << drawable->symbol(character)
         << " hit with " << damage << " damage.";
 
-    if (character->isDead())
+    auto health = ComponentRegistry::find<ComponentHealth>();
+    if (health->isDead(character))
     {
         display->dialogBuffer() << " And died.";
     }
@@ -219,7 +238,8 @@ void GameStateExploring::operator () (
     display->dialogBuffer()
         << "Creature hit with " << damage << " damage.";
 
-    if (creature->isDead())
+    auto health = ComponentRegistry::find<ComponentHealth>();
+    if (health->isDead(creature))
     {
         display->dialogBuffer() << " And died.";
 

@@ -4,6 +4,7 @@
 #include "ComponentDrawable.h"
 #include "ComponentIdentifiable.h"
 #include "ComponentLayer.h"
+#include "ComponentLocateable.h"
 #include "ComponentRegistry.h"
 #include "Display.h"
 #include "Game.h"
@@ -218,40 +219,23 @@ std::vector<Point> Level::entryLocations (unsigned int count) const
     return locations;
 }
 
-std::vector<Character> Level::spawnCreatures () const
+void Level::spawnCreatures () const
 {
-    std::vector<Character> creatures;
-
-    Behavior * behavior = mGame->creatureBehavior();
-    creatures.push_back(Character(100, 'a', behavior));
-    creatures.back().setLocation({7, 3});
-    creatures.back().setMaxHealth(10, false);
-    creatures.back().setCurrentHealth(10, false);
-    creatures.back().setAttackDamage(4);
-
-    creatures.push_back(Character(101, 'a', behavior));
-    creatures.back().setLocation({6, 7});
-    creatures.back().setMaxHealth(10, false);
-    creatures.back().setCurrentHealth(10, false);
-    creatures.back().setAttackDamage(4);
-
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-    auto moveable = ComponentRegistry::find<ComponentMoveable>();
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
 
     for (int i = 0; i < 10; ++i)
     {
         auto creature = createRat();
 
-        auto location = mLevel->findRandomLocationOnLand();
-        moveable->setLocation(&creature, location);
+        auto location = findRandomLocationOnLand();
+        locateable->setLocation(&creature, location);
 
-        addEvent(CreatureSpawned {identifiable->instanceId(&creature)});
+        mGame->addEvent(CreatureSpawned {identifiable->instanceId(&creature)});
     }
-
-    return creatures;
 }
 
-Location Level::calculateMoveLocation (
+Point Level::calculateMoveLocation (
     Point const & current,
     Point const & proposed,
     int moveLayerId) const
@@ -319,7 +303,7 @@ GameItem * Level::findTile (Point const & location)
     return &baseTile;
 }
 
-Tile const * Level::findTile (Location const & location) const
+GameItem const * Level::findTile (Point const & location) const
 {
     if (location.x < 0 ||
         static_cast<unsigned int>(location.x) >= mWidth ||
@@ -364,6 +348,39 @@ GameItem Level::createTile (char symbol, int layerId) const
     layer->setLayerId(&tile, layerId);
 
     return tile;
+}
+
+GameItem Level::createRat () const
+{
+    auto drawable = ComponentRegistry::find<ComponentDrawable>();
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+    auto layer = ComponentRegistry::find<ComponentLayer>();
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
+
+    auto registeredItem = GameItemRegistry::find("rat");
+    GameItem rat(registeredItem->id());
+
+    rat.addComponent(drawable->id());
+    drawable->setSymbol(&rat, 'a');
+
+    rat.addComponent(identifiable->id());
+    identifiable->setUniqueInstanceId(&rat);
+
+    int animalsLayerId = 0;
+    GameItem * layerItem;
+    layerItem = GameItemRegistry::find("animals");
+    if (layerItem != nullptr)
+    {
+        animalsLayerId = layerItem->id();
+    }
+
+    rat.addComponent(layer->id());
+    layer->setLayerId(&rat, animalsLayerId);
+
+    rat.addComponent(locateable->id());
+    // The actual location will be set later.
+
+    return rat;
 }
 
 int Level::width ()

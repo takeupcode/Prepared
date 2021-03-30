@@ -64,7 +64,7 @@ void calculateQuadrantOutline (
             // If the last point is still inside the outline, then we
             // need to start increasing the width. This will affect
             // the higher rows by increasing xMax.
-            bool lastPointInside;
+            bool lastPointInside = false;
 
             x = 0;
             while (x <= xMax)
@@ -148,7 +148,7 @@ std::vector<std::vector<bool>> createOutline (int seed)
     Noise noise(seed, 1, 4);
     seed = noise.seed();
 
-    const double targetRadius = 40;
+    const double targetRadius = 25;
     std::vector<std::vector<bool>> quadrant1;
     std::vector<std::vector<bool>> quadrant2;
     std::vector<std::vector<bool>> quadrant3;

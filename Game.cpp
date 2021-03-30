@@ -1,17 +1,16 @@
 #include "Game.h"
 
-#include "BehaviorCreature.h"
-#include "BehaviorPC.h"
 #include "ComponentAbilityAdjustment.h"
-#include "ComponentContainer.h"
 #include "ComponentConsumable.h"
+#include "ComponentContainer.h"
 #include "ComponentDrawable.h"
 #include "ComponentEdible.h"
 #include "ComponentFindable.h"
 #include "ComponentGroupable.h"
+#include "ComponentHealth.h"
 #include "ComponentIdentifiable.h"
 #include "ComponentLayer.h"
-#include "ComponentMoveable.h"
+#include "ComponentLocateable.h"
 #include "ComponentPhysical.h"
 #include "ComponentRegistry.h"
 #include "ComponentTradeable.h"
@@ -338,12 +337,12 @@ void Game::placeCharacters ()
 
     auto locations = mLevel->entryLocations(mCharacters.size());
 
-    auto moveable = ComponentRegistry::find<ComponentMoveable>();
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
 
     unsigned int i = 0;
     for (auto & character: mCharacters)
     {
-        moveable->setLocation(&character, locations[i]);
+        locateable->setLocation(&character, locations[i]);
         ++i;
     }
 
@@ -360,7 +359,7 @@ void Game::spawnCreatures ()
         return;
     }
 
-    mCreatures = mLevel->spawnCreatures();
+    mLevel->spawnCreatures();
 }
 
 void Game::addLayer (int layerId)
@@ -419,20 +418,6 @@ void Game::operator () (GameState::Pop & action)
     mStates.pop();
 }
 
-Behavior * Game::playerCharacterBehavior () const
-{
-    static BehaviorPC behavior;
-
-    return &behavior;
-}
-
-Behavior * Game::creatureBehavior () const
-{
-    static BehaviorCreature behavior;
-
-    return &behavior;
-}
-
 GameState::StateAction Game::processInput ()
 {
     if (mStates.empty())
@@ -486,9 +471,10 @@ void Game::registerComponents ()
     ComponentEdible edible;
     ComponentFindable findable;
     ComponentGroupable groupable;
+    ComponentHealth health;
     ComponentIdentifiable identifiable;
     ComponentLayer layer;
-    ComponentMoveable moveable;
+    ComponentLocateable locateable;
     ComponentPhysical physical;
     ComponentTradeable tradeable;
 
@@ -499,9 +485,10 @@ void Game::registerComponents ()
     ComponentRegistry::add(edible);
     ComponentRegistry::add(findable);
     ComponentRegistry::add(groupable);
+    ComponentRegistry::add(health);
     ComponentRegistry::add(identifiable);
     ComponentRegistry::add(layer);
-    ComponentRegistry::add(moveable);
+    ComponentRegistry::add(locateable);
     ComponentRegistry::add(physical);
     ComponentRegistry::add(tradeable);
 }
@@ -587,37 +574,4 @@ void Game::registerLayers ()
     gameItem->addComponent(identifiable->id());
     identifiable->setName(gameItem, "flying");
     addLayer(gameItem->id());
-}
-
-GameItem Game::createRat () const
-{
-    auto drawable = ComponentRegistry::find<ComponentDrawable>();
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-    auto layer = ComponentRegistry::find<ComponentLayer>();
-    auto moveable = ComponentRegistry::find<ComponentMoveable>();
-
-    auto registeredItem = GameItemRegistry::find("rat");
-    GameItem rat(registeredItem->id());
-
-    rat.addComponent(drawable->id());
-    drawable->setSymbol(&rat, 'a');
-
-    rat.addComponent(identifiable->id());
-    identifiable->setUniqueInstanceId(&rat);
-
-    int animalsLayerId = 0;
-    GameItem * layerItem;
-    layerItem = GameItemRegistry::find("animals");
-    if (layerItem != nullptr)
-    {
-        animalsLayerId = layerItem->id();
-    }
-
-    rat.addComponent(layer->id());
-    layer->setLayerId(&rat, animalsLayerId);
-
-    rat.addComponent(moveable->id());
-    // The actual location will be set later.
-
-    return rat;
 }

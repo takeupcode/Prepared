@@ -21,7 +21,7 @@ public:
     std::vector<Point> entryLocations (
         unsigned int count) const;
 
-    std::vector<GameItem> spawnCreatures () const;
+    void spawnCreatures () const;
 
     Point calculateMoveLocation (
         Point const & current,
@@ -44,6 +44,8 @@ public:
 
 private:
     GameItem createTile (char symbol, int layerId) const;
+
+    GameItem createRat () const;
 
     Game * mGame;
     int mSeed;

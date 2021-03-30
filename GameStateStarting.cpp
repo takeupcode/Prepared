@@ -2,9 +2,10 @@
 
 #include "ComponentConsumable.h"
 #include "ComponentDrawable.h"
+#include "ComponentHealth.h"
 #include "ComponentIdentifiable.h"
 #include "ComponentLayer.h"
-#include "ComponentMoveable.h"
+#include "ComponentLocateable.h"
 #include "ComponentRegistry.h"
 #include "Game.h"
 #include "GameItemRegistry.h"
@@ -116,15 +117,20 @@ void GameStateStarting::draw ()
 GameItem GameStateStarting::createCharacter (char symbol) const
 {
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
+    auto health = ComponentRegistry::find<ComponentHealth>();
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     auto layer = ComponentRegistry::find<ComponentLayer>();
-    auto moveable = ComponentRegistry::find<ComponentMoveable>();
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
 
     auto registeredCharacter = GameItemRegistry::find("character");
     GameItem character(registeredCharacter->id());
 
     character.addComponent(drawable->id());
     drawable->setSymbol(&character, symbol);
+
+    character.addComponent(health->id());
+    health->setMaxHealth(&character, 60);
+    health->setHealth(&character, 60);
 
     character.addComponent(identifiable->id());
     identifiable->setUniqueInstanceId(&character);
@@ -141,7 +147,7 @@ GameItem GameStateStarting::createCharacter (char symbol) const
     character.addComponent(layer->id());
     layer->setLayerId(&character, playersLayerId);
 
-    character.addComponent(moveable->id());
+    character.addComponent(locateable->id());
     // The actual location will be set later.
 
     return character;

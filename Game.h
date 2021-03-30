@@ -16,8 +16,6 @@
 #include <stack>
 #include <vector>
 
-class Behavior;
-
 class Game
 {
 public:
@@ -82,10 +80,6 @@ public:
 
     void operator () (GameState::Pop & action);
 
-    Behavior * playerCharacterBehavior () const;
-
-    Behavior * creatureBehavior () const;
-
 private:
     GameState::StateAction processInput ();
 
@@ -102,8 +96,6 @@ private:
     void setLayerCollisionsInLevel ();
 
     void placeCharacters ();
-
-    GameItem createRat () const;
 
     std::ostream & mOutput;
     std::istream & mInput;

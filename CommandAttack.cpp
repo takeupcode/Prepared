@@ -1,9 +1,11 @@
 #include "CommandAttack.h"
 
-#include "Character.h"
+#include "ComponentHealth.h"
+#include "ComponentLocateable.h"
+#include "ComponentRegistry.h"
 #include "Direction.h"
 #include "Game.h"
-#include "Location.h"
+#include "Point.h"
 
 #include <vector>
 
@@ -47,11 +49,11 @@ std::unique_ptr<Command> CommandAttack::tryCreate (
         new CommandAttack(characterId));
 }
 
-std::vector<Location> attackLocations (
-    Location const & location,
+std::vector<Point> attackLocations (
+    Point const & location,
     Direction direction)
 {
-    std::vector<Location> result;
+    std::vector<Point> result;
 
     switch (direction)
     {
@@ -125,24 +127,26 @@ GameState::StateAction CommandAttack::execute (Game * game) const
         return GameState::Keep {};
     }
 
+    auto locateable = ComponentRegistry::find<ComponentLocateable>();
     auto attacks = attackLocations(
-        character->location(),
-        character->direction());
+        locateable->location(character),
+        locateable->direction(character));
 
+    auto health = ComponentRegistry::find<ComponentHealth>();
     for (auto & creature: game->creatures())
     {
         for (auto const & attack: attacks)
         {
-            if (creature.location() == attack)
+            if (locateable->location(&creature) == attack)
             {
                 if (game->randomPercent() > 80)
                 {
                     continue;
                 }
 
-                int damage = -character->attackDamage();
-                creature.setCurrentHealth(damage);
-                creature.setAttackerId(characterId);
+                int damage = 4;
+                health->setHealth(&creature, -damage, true);
+                //creature.setAttackerId(characterId);
 
                 game->addEvent(CreatureHit {
                     creature.id(),

@@ -5,8 +5,6 @@
 
 int main ()
 {
-    Prompt prompt(std::cout, std::cin);
-
     bool continuePlaying = true;
     while (continuePlaying)
     {
@@ -14,8 +12,8 @@ int main ()
 
         game.play();
 
-        continuePlaying =
-            prompt.promptYesOrNo("Would you like to play again?");
+        continuePlaying = game.prompt().promptYesOrNo(
+            "Would you like to play again?");
     }
 
     return 0;

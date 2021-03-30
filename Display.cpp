@@ -34,7 +34,7 @@ void Display::update ()
         mGame->output() << line << std::endl;
     }
 
-    mGame->output() << "----------------------------" << std::endl;
+    mGame->output() << "-------------------------------" << std::endl;
 
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
     mGame->output() << "Character ";
@@ -61,14 +61,14 @@ void Display::update ()
     }
     mGame->output() << std::endl;
 
-    mGame->output() << "----------------------------" << std::endl;
+    mGame->output() << "-------------------------------" << std::endl;
 
     for (auto const & line: mDialogOutputLines)
     {
         mGame->output() << line << std::endl;
     }
 
-    mGame->output() << "----------------------------" << std::endl;
+    mGame->output() << "-------------------------------" << std::endl;
 
     mMapOutputLines.clear();
     mDialogOutputLines.clear();

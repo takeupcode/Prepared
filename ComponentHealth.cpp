@@ -13,8 +13,13 @@ int ComponentHealth::health (
 
 void ComponentHealth::setHealth (
     GameItem * gameItem,
-    int value)
+    int value,
+    bool delta)
 {
+    if (delta)
+    {
+        value += health(gameItem, 0);
+    }
     setDirectValue<int, int>(gameItem, "health", value);
 }
 
@@ -27,8 +32,13 @@ unsigned int ComponentHealth::maxHealth (
 
 void ComponentHealth::setMaxHealth (
     GameItem * gameItem,
-    unsigned int value)
+    unsigned int value,
+    bool delta)
 {
+    if (delta)
+    {
+        value += maxHealth(gameItem, 0);
+    }
     setDirectValue<unsigned int, int>(gameItem, "maxHealth", value);
 }
 

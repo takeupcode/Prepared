@@ -2,6 +2,7 @@
 
 #include "ComponentConsumable.h"
 #include "ComponentDrawable.h"
+#include "ComponentHealth.h"
 #include "ComponentIdentifiable.h"
 #include "ComponentLayer.h"
 #include "ComponentLocateable.h"
@@ -116,6 +117,7 @@ void GameStateStarting::draw ()
 GameItem GameStateStarting::createCharacter (char symbol) const
 {
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
+    auto health = ComponentRegistry::find<ComponentHealth>();
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     auto layer = ComponentRegistry::find<ComponentLayer>();
     auto locateable = ComponentRegistry::find<ComponentLocateable>();
@@ -125,6 +127,10 @@ GameItem GameStateStarting::createCharacter (char symbol) const
 
     character.addComponent(drawable->id());
     drawable->setSymbol(&character, symbol);
+
+    character.addComponent(health->id());
+    health->setMaxHealth(&character, 60);
+    health->setHealth(&character, 60);
 
     character.addComponent(identifiable->id());
     identifiable->setUniqueInstanceId(&character);

@@ -21,7 +21,8 @@ public:
 
     void setHealth (
         GameItem * gameItem,
-        int value);
+        int value,
+        bool delta = false);
 
     unsigned int maxHealth (
         GameItem const * gameItem,
@@ -29,7 +30,8 @@ public:
 
     void setMaxHealth (
         GameItem * gameItem,
-        unsigned int value);
+        unsigned int value,
+        bool delta = false);
 
     bool isDead (
         GameItem const * gameItem,

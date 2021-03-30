@@ -99,7 +99,7 @@ void GameStateExploring::draw ()
     auto display = mGame->display();
     display->clear();
 
-    mGame->output() << "----------------" << std::endl;
+    mGame->output() << "-------------------------------" << std::endl;
 
     mGame->level()->draw();
 

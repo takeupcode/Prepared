@@ -1,12 +1,13 @@
 #include "Game.h"
 
 #include "ComponentAbilityAdjustment.h"
-#include "ComponentContainer.h"
 #include "ComponentConsumable.h"
+#include "ComponentContainer.h"
 #include "ComponentDrawable.h"
 #include "ComponentEdible.h"
 #include "ComponentFindable.h"
 #include "ComponentGroupable.h"
+#include "ComponentHealth.h"
 #include "ComponentIdentifiable.h"
 #include "ComponentLayer.h"
 #include "ComponentLocateable.h"
@@ -470,6 +471,7 @@ void Game::registerComponents ()
     ComponentEdible edible;
     ComponentFindable findable;
     ComponentGroupable groupable;
+    ComponentHealth health;
     ComponentIdentifiable identifiable;
     ComponentLayer layer;
     ComponentLocateable locateable;
@@ -483,6 +485,7 @@ void Game::registerComponents ()
     ComponentRegistry::add(edible);
     ComponentRegistry::add(findable);
     ComponentRegistry::add(groupable);
+    ComponentRegistry::add(health);
     ComponentRegistry::add(identifiable);
     ComponentRegistry::add(layer);
     ComponentRegistry::add(locateable);

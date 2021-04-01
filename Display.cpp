@@ -1,5 +1,6 @@
 #include "Display.h"
 
+#include "ASCII.h"
 #include "ComponentDrawable.h"
 #include "ComponentHealth.h"
 #include "ComponentLocateable.h"
@@ -34,7 +35,11 @@ void Display::update ()
         mGame->output() << line << std::endl;
     }
 
-    mGame->output() << "-------------------------------" << std::endl;
+    mGame->output()
+        << ASCIIEscape::graphicSequence({ASCIIGraphic::ForeRed})
+        << "-------------------------------"
+        << ASCIIEscape::graphicSequence({ASCIIGraphic::ResetAll})
+        << std::endl;
 
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
     mGame->output() << "Character ";

@@ -10,6 +10,7 @@
 #include "Game.h"
 #include "GameItemRegistry.h"
 #include "GameStateExploring.h"
+#include "GameStateOptions.h"
 
 #include <iomanip>
 
@@ -67,6 +68,11 @@ GameState::StateAction GameStateStarting::processInput ()
             new GameStateExploring(mGame))};
 
     case 2:
+        return GameState::Push {std::unique_ptr<GameState>(
+            new GameStateOptions(mGame))};
+        break;
+
+    case 3:
         std::string inputString = mGame->prompt().promptText(
             "Enter symbol for new character: ");
         mCharacters.push_back(createCharacter(
@@ -110,7 +116,8 @@ void GameStateStarting::draw ()
 
     mGame->output() << std::endl;
     mGame->output() << "1. Play game." << std::endl;
-    mGame->output() << "2. Add character." << std::endl;
+    mGame->output() << "2. Options." << std::endl;
+    mGame->output() << "3. Add character." << std::endl;
     mGame->output() << std::endl;
 }
 

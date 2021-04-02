@@ -110,6 +110,11 @@ int Game::randomPercent ()
     return mPercent(mRNG);
 }
 
+GameOptions & Game::options ()
+{
+    return mOptions;
+}
+
 std::vector<GameItem> & Game::characters ()
 {
     return mCharacters;

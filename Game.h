@@ -4,6 +4,7 @@
 #include "Display.h"
 #include "GameEvent.h"
 #include "GameItem.h"
+#include "GameOptions.h"
 #include "GameState.h"
 #include "Level.h"
 #include "Prompt.h"
@@ -41,6 +42,8 @@ public:
     unsigned int seed ();
 
     int randomPercent ();
+
+    GameOptions & options ();
 
     std::vector<GameItem> & characters ();
     std::vector<GameItem> const & characters () const;
@@ -113,6 +116,7 @@ private:
     std::mt19937 mRNG;
     std::uniform_int_distribution<std::mt19937::result_type>
         mPercent;
+    GameOptions mOptions;
 };
 
 #endif // GAME_H

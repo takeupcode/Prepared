@@ -3,6 +3,7 @@
 #include "CommandAttack.h"
 #include "CommandInventory.h"
 #include "CommandMove.h"
+#include "CommandOptions.h"
 #include "CommandQuit.h"
 #include "CommandSelectCharacter.h"
 #include "CommandTurn.h"
@@ -68,6 +69,12 @@ GameState::StateAction GameStateExploring::processInput ()
     }
 
     command = CommandWait::tryCreate(inputString);
+    if (command != nullptr)
+    {
+        return command->execute(mGame);
+    }
+
+    command = CommandOptions::tryCreate(inputString);
     if (command != nullptr)
     {
         return command->execute(mGame);

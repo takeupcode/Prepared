@@ -1,5 +1,6 @@
 #include "Prompt.h"
 
+#include <iomanip>
 #include <limits>
 #include <stdexcept>
 
@@ -159,4 +160,38 @@ std::string Prompt::promptText (
     }
 
     return input;
+}
+
+int Prompt::promptChoice (
+    std::string const & prompt,
+    std::vector<std::string> const & choices)
+{
+    int i = 0;
+    for (auto & choice: choices)
+    {
+        mOutput << std::setw(3) << i++ << ": "
+            << choice << std::endl;
+    }
+    mOutput << prompt;
+
+    unsigned int input;
+    while (true)
+    {
+        while (!(mInput >> input))
+        {
+            mInput.clear();
+            mInput.ignore(
+                std::numeric_limits<std::streamsize>::max(), '\n');
+
+            mOutput << "Please enter a valid number: ";
+        }
+
+        if (input >= 0 && input < choices.size())
+        {
+            return input;
+        }
+
+        mOutput << "Please enter a number between "
+            << 0 << " and " << (choices.size() - 1) << ": ";
+    }
 }

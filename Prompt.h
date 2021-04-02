@@ -4,6 +4,7 @@
 #include <istream>
 #include <ostream>
 #include <string>
+#include <vector>
 
 class Prompt
 {
@@ -29,6 +30,10 @@ public:
     std::string promptText (
         std::string const & prompt,
         bool makeUpperCase = false);
+
+    int promptChoice (
+        std::string const & prompt,
+        std::vector<std::string> const & choices);
 
 private:
     std::ostream & mOutput;

@@ -1,6 +1,6 @@
 #include "ASCII.h"
 
-bool ASCIIEscape::mEnabled = true;
+bool ASCIIEscape::mEnabled = false;
 
 auto ASCIIEscapeBegin = "\x1b[";
 auto ASCIIEscapeDelimiter = ";";

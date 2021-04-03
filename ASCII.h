@@ -74,7 +74,7 @@ public:
     static void setEnabled (bool enabled);
 
     static std::string graphicSequence (
-        std::vector<char const *> const & attrs);
+        std::vector<std::string> const & attrs);
 
 private:
     static bool mEnabled;

@@ -8,7 +8,7 @@ ComponentConsumable::RemainingEstimate ComponentConsumable::percentageRemainingE
     GameItem const * gameItem,
     RemainingEstimate defaultValue) const
 {
-    return getDirectValue<RemainingEstimate, int>(
+    return getChainedValue<RemainingEstimate, int>(
         gameItem,
         "percentageRemainingEstimate",
         defaultValue);
@@ -18,7 +18,7 @@ double ComponentConsumable::percentageRemainingExact (
     GameItem const * gameItem,
     double defaultValue) const
 {
-    return getDirectValue<double, double>(
+    return getChainedValue<double, double>(
         gameItem,
         "percentageRemainingExact",
         defaultValue);

@@ -76,7 +76,7 @@ void ASCIIEscape::setEnabled (bool enabled)
 }
 
 std::string ASCIIEscape::graphicSequence (
-    std::vector<char const *> const & attrs)
+    std::vector<std::string> const & attrs)
 {
     std::string result;
 

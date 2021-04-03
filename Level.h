@@ -43,8 +43,6 @@ public:
     Point findRandomLocationOnLand () const;
 
 private:
-    GameItem createTile (char symbol, int layerId) const;
-
     GameItem createRat () const;
 
     Game * mGame;

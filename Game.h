@@ -93,8 +93,7 @@ private:
     void draw ();
 
     void registerComponents ();
-    void registerGameItems ();
-    void registerLayers ();
+    void registerItems ();
 
     void setLayerCollisionsInLevel ();
 

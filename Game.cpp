@@ -1,6 +1,8 @@
 #include "Game.h"
 
+#include "ASCII.h"
 #include "ComponentAbilityAdjustment.h"
+#include "ComponentColor.h"
 #include "ComponentConsumable.h"
 #include "ComponentContainer.h"
 #include "ComponentDrawable.h"
@@ -46,8 +48,7 @@ void Game::play ()
     mGameOver = false;
 
     registerComponents();
-    registerGameItems();
-    registerLayers();
+    registerItems();
 
     mDisplay.reset(new Display(this));
 
@@ -470,6 +471,7 @@ void Game::registerComponents ()
     ComponentRegistry::clear();
 
     ComponentAbilityAdjustment ability;
+    ComponentColor color;
     ComponentConsumable consumable;
     ComponentContainer container;
     ComponentDrawable drawable;
@@ -484,6 +486,7 @@ void Game::registerComponents ()
     ComponentTradeable tradeable;
 
     ComponentRegistry::add(ability);
+    ComponentRegistry::add(color);
     ComponentRegistry::add(consumable);
     ComponentRegistry::add(container);
     ComponentRegistry::add(drawable);
@@ -498,67 +501,40 @@ void Game::registerComponents ()
     ComponentRegistry::add(tradeable);
 }
 
-void Game::registerGameItems ()
+void Game::registerItems ()
 {
     GameItemRegistry::clear();
 
+    auto drawable = ComponentRegistry::find<ComponentDrawable>();
     auto groupable = ComponentRegistry::find<ComponentGroupable>();
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+    auto layer = ComponentRegistry::find<ComponentLayer>();
+    auto color = ComponentRegistry::find<ComponentColor>();
 
-    auto gameItem = GameItemRegistry::add("character");
-    gameItem->addComponent(identifiable->id());
-    identifiable->setName(gameItem, "character");
-
-    gameItem = GameItemRegistry::add("rat");
-    gameItem->addComponent(identifiable->id());
-    identifiable->setName(gameItem, "rat");
-
-    gameItem = GameItemRegistry::add("tile");
-    gameItem->addComponent(identifiable->id());
-    identifiable->setName(gameItem, "tile");
-
-    gameItem = GameItemRegistry::add("gold");
-    gameItem->addComponent(identifiable->id());
-    identifiable->setName(gameItem, "gold");
-
-    gameItem = GameItemRegistry::add("silver");
-    gameItem->addComponent(identifiable->id());
-    identifiable->setName(gameItem, "silver");
-
-    gameItem = GameItemRegistry::add("red apple");
-    gameItem->addComponent(identifiable->id());
-    identifiable->setName(gameItem, "red apple");
-
-    gameItem = GameItemRegistry::add("torch");
-    gameItem->addComponent(identifiable->id());
-    identifiable->setName(gameItem, "torch");
-    gameItem->addComponent(groupable->id());
-    groupable->setPropertyNames(gameItem, {"percentageRemainingEstimate"});
-}
-
-void Game::registerLayers ()
-{
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-
+    // Layers
     auto gameItem = GameItemRegistry::add("deep water");
     gameItem->addComponent(identifiable->id());
     identifiable->setName(gameItem, "deep water");
     addLayer(gameItem->id());
+    int deepWaterLayerId = gameItem->id();
 
     gameItem = GameItemRegistry::add("shallow water");
     gameItem->addComponent(identifiable->id());
     identifiable->setName(gameItem, "shallow water");
     addLayer(gameItem->id());
+    int shallowWaterLayerId = gameItem->id();
 
     gameItem = GameItemRegistry::add("land");
     gameItem->addComponent(identifiable->id());
     identifiable->setName(gameItem, "land");
     addLayer(gameItem->id());
+    int landLayerId = gameItem->id();
 
     gameItem = GameItemRegistry::add("solids");
     gameItem->addComponent(identifiable->id());
     identifiable->setName(gameItem, "solids");
     addLayer(gameItem->id());
+    int solidsLayerId = gameItem->id();
 
     gameItem = GameItemRegistry::add("player characters");
     gameItem->addComponent(identifiable->id());
@@ -579,4 +555,135 @@ void Game::registerLayers ()
     gameItem->addComponent(identifiable->id());
     identifiable->setName(gameItem, "flying");
     addLayer(gameItem->id());
+
+    // Tiles
+    gameItem = GameItemRegistry::add("deep water tile");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "deep water");
+    gameItem->addComponent(drawable->id());
+    drawable->setSymbol(gameItem, 'w');
+    gameItem->addComponent(layer->id());
+    layer->setLayerId(gameItem, deepWaterLayerId);
+    gameItem->addComponent(color->id());
+    color->setAttributesBasic(gameItem,
+        {ASCIIGraphic::BackBlue});
+
+    gameItem = GameItemRegistry::add("shallow water tile");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "shallow water");
+    gameItem->addComponent(drawable->id());
+    drawable->setSymbol(gameItem, 'w');
+    gameItem->addComponent(layer->id());
+    layer->setLayerId(gameItem, shallowWaterLayerId);
+    gameItem->addComponent(color->id());
+    color->setAttributesBasic(gameItem,
+        {ASCIIGraphic::BackBlue});
+
+    gameItem = GameItemRegistry::add("dirt tile");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "dirt");
+    gameItem->addComponent(drawable->id());
+    drawable->setSymbol(gameItem, ' ');
+    gameItem->addComponent(layer->id());
+    layer->setLayerId(gameItem, landLayerId);
+    gameItem->addComponent(color->id());
+
+    gameItem = GameItemRegistry::add("sand tile");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "sand");
+    gameItem->addComponent(drawable->id());
+    drawable->setSymbol(gameItem, 's');
+    gameItem->addComponent(layer->id());
+    layer->setLayerId(gameItem, landLayerId);
+    gameItem->addComponent(color->id());
+    color->setAttributesBasic(gameItem,
+        {ASCIIGraphic::ForeYellow});
+
+    gameItem = GameItemRegistry::add("marsh tile");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "marsh");
+    gameItem->addComponent(drawable->id());
+    drawable->setSymbol(gameItem, 'm');
+    gameItem->addComponent(layer->id());
+    layer->setLayerId(gameItem, landLayerId);
+    gameItem->addComponent(color->id());
+    color->setAttributesBasic(gameItem,
+        {ASCIIGraphic::ForeBlue});
+
+    gameItem = GameItemRegistry::add("rock tile");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "rock");
+    gameItem->addComponent(drawable->id());
+    drawable->setSymbol(gameItem, ' ');
+    gameItem->addComponent(layer->id());
+    layer->setLayerId(gameItem, landLayerId);
+    gameItem->addComponent(color->id());
+
+    gameItem = GameItemRegistry::add("ice tile");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "ice");
+    gameItem->addComponent(drawable->id());
+    drawable->setSymbol(gameItem, 'i');
+    gameItem->addComponent(layer->id());
+    layer->setLayerId(gameItem, landLayerId);
+    gameItem->addComponent(color->id());
+    color->setAttributesBasic(gameItem,
+        {ASCIIGraphic::ForeBrightWhite});
+
+    gameItem = GameItemRegistry::add("tree tile");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "tree");
+    gameItem->addComponent(drawable->id());
+    drawable->setSymbol(gameItem, 't');
+    gameItem->addComponent(layer->id());
+    layer->setLayerId(gameItem, solidsLayerId);
+    gameItem->addComponent(color->id());
+    color->setAttributesBasic(gameItem,
+        {ASCIIGraphic::ForeGreen});
+
+    gameItem = GameItemRegistry::add("grass tile");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "grass");
+    gameItem->addComponent(drawable->id());
+    drawable->setSymbol(gameItem, ' ');
+    gameItem->addComponent(layer->id());
+    layer->setLayerId(gameItem, landLayerId);
+    gameItem->addComponent(color->id());
+
+    gameItem = GameItemRegistry::add("bush tile");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "bush");
+    gameItem->addComponent(drawable->id());
+    drawable->setSymbol(gameItem, 'b');
+    gameItem->addComponent(layer->id());
+    layer->setLayerId(gameItem, solidsLayerId);
+    gameItem->addComponent(color->id());
+
+    // Actors
+    gameItem = GameItemRegistry::add("character");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "character");
+
+    gameItem = GameItemRegistry::add("rat");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "rat");
+
+    // Items
+    gameItem = GameItemRegistry::add("gold");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "gold");
+
+    gameItem = GameItemRegistry::add("silver");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "silver");
+
+    gameItem = GameItemRegistry::add("red apple");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "red apple");
+
+    gameItem = GameItemRegistry::add("torch");
+    gameItem->addComponent(identifiable->id());
+    identifiable->setName(gameItem, "torch");
+    gameItem->addComponent(groupable->id());
+    groupable->setPropertyNames(gameItem, {"percentageRemainingEstimate"});
 }

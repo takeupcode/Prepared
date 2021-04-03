@@ -8,7 +8,7 @@ unsigned int ComponentTradeable::value (
     GameItem const * gameItem,
     unsigned int defaultValue) const
 {
-    return getDirectValue<unsigned int, int>(gameItem, "value", defaultValue);
+    return getChainedValue<unsigned int, int>(gameItem, "value", defaultValue);
 }
 
 void ComponentTradeable::setValue (

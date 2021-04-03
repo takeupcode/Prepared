@@ -1,5 +1,6 @@
 #include "ComponentDrawable.h"
 
+#include "ASCII.h"
 #include "ComponentIdentifiable.h"
 #include "ComponentLocateable.h"
 #include "ComponentRegistry.h"
@@ -34,14 +35,17 @@ void ComponentDrawable::draw (GameItem const * gameItem, Display * display) cons
         }
     }
 
-    display->setMapSymbol(isImportant ? '*' : symbol, location, isImportant);
+    std::string symbolStr =
+        ASCIIEscape::graphicSequence({ASCIIGraphic::ForeRed});
+    symbolStr += isImportant ? '*' : symbol;
+    display->setMapSymbol(symbolStr, location, isImportant);
 }
 
 char ComponentDrawable::symbol (
     GameItem const * gameItem,
     char defaultValue) const
 {
-    return getDirectValue<char, char>(gameItem, "symbol", defaultValue);
+    return getChainedValue<char, char>(gameItem, "symbol", defaultValue);
 }
 
 void ComponentDrawable::setSymbol (

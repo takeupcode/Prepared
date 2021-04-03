@@ -45,7 +45,7 @@ unsigned int ComponentIdentifiable::count (
     GameItem const * gameItem,
     unsigned int defaultValue) const
 {
-    return getDirectValue<unsigned int, int>(gameItem, "count", defaultValue);
+    return getChainedValue<unsigned int, int>(gameItem, "count", defaultValue);
 }
 
 void ComponentIdentifiable::setCount (

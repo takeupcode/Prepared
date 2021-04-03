@@ -1,5 +1,7 @@
 #include "Level.h"
 
+#include "ASCII.h"
+#include "ComponentColor.h"
 #include "ComponentConsumable.h"
 #include "ComponentDrawable.h"
 #include "ComponentIdentifiable.h"
@@ -28,27 +30,13 @@ void Level::generate ()
 {
     auto terrain = GameMap::create();
 
-    // Get the layer ids ready.
-    int deepWaterLayerId = 0;
-    int landLayerId = 0;
-    int solidsLayerId = 0;
-
-    GameItem * layerItem;
-    layerItem = GameItemRegistry::find("deep water");
-    if (layerItem != nullptr)
-    {
-        deepWaterLayerId = layerItem->id();
-    }
-    layerItem = GameItemRegistry::find("land");
-    if (layerItem != nullptr)
-    {
-        landLayerId = layerItem->id();
-    }
-    layerItem = GameItemRegistry::find("solids");
-    if (layerItem != nullptr)
-    {
-        solidsLayerId = layerItem->id();
-    }
+    auto deepTile = GameItemRegistry::find("deep water tile");
+    auto dirtTile = GameItemRegistry::find("dirt tile");
+    auto sandTile = GameItemRegistry::find("sand tile");
+    auto marshTile = GameItemRegistry::find("marsh tile");
+    auto iceTile = GameItemRegistry::find("ice tile");
+    auto treeTile = GameItemRegistry::find("tree tile");
+    auto grassTile = GameItemRegistry::find("grass tile");
 
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
 
@@ -60,51 +48,75 @@ void Level::generate ()
     {
         for (int x = 0; x < mWidth; ++x)
         {
-            char baseSymbol = ' ';
-            int baseLayerId = 0;
-            char layeredSymbol = ' ';
-            int layeredLayerId = 0;
             switch (terrain[y][x])
             {
                 case GameMap::Terrain::Water:
-                    baseSymbol = 'w';
-                    baseLayerId = deepWaterLayerId;
+                {
+                    GameItem waterInst(deepTile->id());
+                    waterInst.addComponent(identifiable->id());
+                    identifiable->setUniqueInstanceId(&waterInst);
+                    mTiles.push_back(waterInst);
                     break;
+                }
 
                 case GameMap::Terrain::Sand:
-                    baseSymbol = 's';
-                    baseLayerId = landLayerId;
+                {
+                    GameItem sandInst(sandTile->id());
+                    sandInst.addComponent(identifiable->id());
+                    identifiable->setUniqueInstanceId(&sandInst);
+                    mTiles.push_back(sandInst);
                     break;
+                }
 
                 case GameMap::Terrain::Marsh:
-                    baseSymbol = 'm';
-                    baseLayerId = landLayerId;
+                {
+                    GameItem marshInst(marshTile->id());
+                    marshInst.addComponent(identifiable->id());
+                    identifiable->setUniqueInstanceId(&marshInst);
+                    mTiles.push_back(marshInst);
                     break;
+                }
 
                 case GameMap::Terrain::Trees:
-                    baseLayerId = landLayerId;
-                    layeredSymbol = 't';
-                    layeredLayerId = solidsLayerId;
+                {
+                    GameItem dirtTreeInst(dirtTile->id());
+                    dirtTreeInst.addComponent(identifiable->id());
+                    identifiable->setUniqueInstanceId(&dirtTreeInst);
+                    mTiles.push_back(dirtTreeInst);
+
+                    GameItem treeInst(treeTile->id());
+                    treeInst.addComponent(identifiable->id());
+                    identifiable->setUniqueInstanceId(&treeInst);
+                    mLayeredTiles.try_emplace(
+                        identifiable->instanceId(&dirtTreeInst),
+                        treeInst);
                     break;
+                }
 
                 case GameMap::Terrain::Grass:
-                    baseLayerId = landLayerId;
-                    layeredLayerId = landLayerId;
+                {
+                    GameItem dirtGrassInst(dirtTile->id());
+                    dirtGrassInst.addComponent(identifiable->id());
+                    identifiable->setUniqueInstanceId(&dirtGrassInst);
+                    mTiles.push_back(dirtGrassInst);
+
+                    GameItem grassInst(grassTile->id());
+                    grassInst.addComponent(identifiable->id());
+                    identifiable->setUniqueInstanceId(&grassInst);
+                    mLayeredTiles.try_emplace(
+                        identifiable->instanceId(&dirtGrassInst),
+                        grassInst);
                     break;
+                }
 
                 case GameMap::Terrain::Ice:
-                    baseSymbol = 'i';
-                    baseLayerId = landLayerId;
+                {
+                    GameItem iceInst(iceTile->id());
+                    iceInst.addComponent(identifiable->id());
+                    identifiable->setUniqueInstanceId(&iceInst);
+                    mTiles.push_back(iceInst);
                     break;
-            }
-            auto tile = createTile(baseSymbol, baseLayerId);
-            mTiles.push_back(tile);
-
-            if (layeredLayerId != 0)
-            {
-                auto tileInstanceId = identifiable->instanceId(&tile);
-                auto layeredTile = createTile(layeredSymbol, layeredLayerId);
-                mLayeredTiles.try_emplace(tileInstanceId, layeredTile);
+                }
             }
         }
     }
@@ -177,9 +189,8 @@ void Level::draw () const
     auto display = mGame->display();
     auto mapOrigin = display->mapScrollOrigin();
 
+    auto color = ComponentRegistry::find<ComponentColor>();
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
-
-    display->beginStreamingToMap();
 
     for (int y = mapOrigin.y;
          y < mapOrigin.y + Display::MapDisplayHeight;
@@ -190,14 +201,12 @@ void Level::draw () const
              ++x)
         {
             auto tile = findTile({x, y});
-            display->mapBuffer() << ' '
-                << drawable->symbol(tile);
+            display->setMapSymbol(
+                ASCIIEscape::graphicSequence(color->attributesBasic(tile)) +
+                    drawable->symbol(tile),
+                {x, y});
         }
-
-        display->mapBuffer() << std::endl;
     }
-
-    display->endStreamingToMap();
 }
 
 std::vector<Point> Level::entryLocations (unsigned int count) const
@@ -329,27 +338,6 @@ GameItem const * Level::findTile (Point const & location) const
     return &baseTile;
 }
 
-GameItem Level::createTile (char symbol, int layerId) const
-{
-    auto drawable = ComponentRegistry::find<ComponentDrawable>();
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-    auto layer = ComponentRegistry::find<ComponentLayer>();
-
-    auto registeredTile = GameItemRegistry::find("tile");
-    GameItem tile(registeredTile->id());
-
-    tile.addComponent(drawable->id());
-    drawable->setSymbol(&tile, symbol);
-
-    tile.addComponent(identifiable->id());
-    identifiable->setUniqueInstanceId(&tile);
-
-    tile.addComponent(layer->id());
-    layer->setLayerId(&tile, layerId);
-
-    return tile;
-}
-
 GameItem Level::createRat () const
 {
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
@@ -418,14 +406,14 @@ Point Level::findRandomLocationOnLand () const
 
     Point result(dist(rng), dist(rng));
 
+    auto layer = ComponentRegistry::find<ComponentLayer>();
     int landLayerId = 0;
-    GameItem * layerItem = GameItemRegistry::find("land");
-    if (layerItem != nullptr)
+    GameItem * grass = GameItemRegistry::find("grass tile");
+    if (grass != nullptr)
     {
-        landLayerId = layerItem->id();
+        landLayerId = layer->layerId(grass);
     }
 
-    auto layer = ComponentRegistry::find<ComponentLayer>();
     while (true)
     {
         auto tile = findTile(result);

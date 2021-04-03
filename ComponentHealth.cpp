@@ -8,7 +8,7 @@ int ComponentHealth::health (
     GameItem const * gameItem,
     int defaultValue) const
 {
-    return getDirectValue<int, int>(gameItem, "health", defaultValue);
+    return getChainedValue<int, int>(gameItem, "health", defaultValue);
 }
 
 void ComponentHealth::setHealth (
@@ -27,7 +27,7 @@ unsigned int ComponentHealth::maxHealth (
     GameItem const * gameItem,
     unsigned int defaultValue) const
 {
-    return getDirectValue<unsigned int, int>(gameItem, "maxHealth", defaultValue);
+    return getChainedValue<unsigned int, int>(gameItem, "maxHealth", defaultValue);
 }
 
 void ComponentHealth::setMaxHealth (
@@ -46,7 +46,7 @@ bool ComponentHealth::isDead (
     GameItem const * gameItem,
     bool defaultValue) const
 {
-    return getDirectValue<bool, bool>(gameItem, "isDead", defaultValue);
+    return getChainedValue<bool, bool>(gameItem, "isDead", defaultValue);
 }
 
 void ComponentHealth::setIsDead (
@@ -60,7 +60,7 @@ bool ComponentHealth::isUnconscious (
     GameItem const * gameItem,
     bool defaultValue) const
 {
-    return getDirectValue<bool, bool>(gameItem, "isUnconscious", defaultValue);
+    return getChainedValue<bool, bool>(gameItem, "isUnconscious", defaultValue);
 }
 
 void ComponentHealth::setIsUnconscious (

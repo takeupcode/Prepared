@@ -12,7 +12,7 @@ class Game;
 class Display
 {
 public:
-    static int constexpr MapDisplayWidth = 15;
+    static int constexpr MapDisplayWidth = 30;
     static int constexpr MapDisplayHeight = 15;
 
     Display (
@@ -24,10 +24,8 @@ public:
     void clear ();
     void update ();
 
-    void beginStreamingToMap ();
-    void endStreamingToMap ();
     void setMapSymbol (
-        char symbol,
+        std::string const & symbol,
         Point const & location,
         bool important = false);
 
@@ -40,7 +38,6 @@ public:
     void beginStreamingToDialog ();
     void endStreamingToDialog ();
 
-    std::ostream & mapBuffer ();
     std::ostream & dialogBuffer ();
 
 private:
@@ -50,6 +47,7 @@ private:
     unsigned int mScreenHeight;
     std::stringstream mMapBuffer;
     std::stringstream mDialogBuffer;
+    std::vector<std::vector<std::string>> mMapOutput;
     std::vector<std::string> mMapOutputLines;
     std::vector<std::string> mDialogOutputLines;
     std::vector<Point> mImportantLocations;

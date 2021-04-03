@@ -8,14 +8,14 @@ bool ComponentFindable::foundCountValid (
     GameItem const * gameItem,
     bool defaultValue) const
 {
-    return getDirectValue<bool, bool>(gameItem, "foundCountValid", defaultValue);
+    return getChainedValue<bool, bool>(gameItem, "foundCountValid", defaultValue);
 }
 
 unsigned int ComponentFindable::foundCount (
     GameItem const * gameItem,
     unsigned int defaultValue) const
 {
-    return getDirectValue<unsigned int, int>(gameItem, "foundCount", defaultValue);
+    return getChainedValue<unsigned int, int>(gameItem, "foundCount", defaultValue);
 }
 
 void ComponentFindable::setFoundCount (
@@ -30,7 +30,7 @@ unsigned int ComponentFindable::targetCount (
     GameItem const * gameItem,
     unsigned int defaultValue) const
 {
-    return getDirectValue<unsigned int, int>(gameItem, "targetCount", defaultValue);
+    return getChainedValue<unsigned int, int>(gameItem, "targetCount", defaultValue);
 }
 
 void ComponentFindable::setTargetCount (
@@ -44,7 +44,7 @@ unsigned int ComponentFindable::chanceOfFinding (
     GameItem const * gameItem,
     unsigned int defaultValue) const
 {
-    return getDirectValue<unsigned int, int>(gameItem, "chanceOfFinding", defaultValue);
+    return getChainedValue<unsigned int, int>(gameItem, "chanceOfFinding", defaultValue);
 }
 
 void ComponentFindable::setChanceOfFinding (

@@ -10,7 +10,7 @@ int ComponentLayer::layerId (
 {
     int result = defaultValue;
 
-    result = getDirectValue<int, int>(gameItem, "layerId", defaultValue);
+    result = getChainedValue<int, int>(gameItem, "layerId", defaultValue);
 
     return result;
 }

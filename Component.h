@@ -208,6 +208,39 @@ protected:
     }
 
     template<typename OutsideT, typename InsideT>
+    OutsideT getChainedValue (
+        GameItem const * gameItem,
+        std::string const & propertyName,
+        OutsideT const & defaultValue) const
+    {
+        OutsideT result = defaultValue;
+        if (isValidGameItem(gameItem))
+        {
+            auto resultOpt = getValue<InsideT>(gameItem, propertyName);
+            if (resultOpt)
+            {
+                result = static_cast<OutsideT>(resultOpt.value());
+            }
+            else
+            {
+                result = getRegisteredValue<OutsideT, InsideT>(
+                    gameItem,
+                    propertyName,
+                    defaultValue);
+            }
+        }
+        else
+        {
+            result = getRegisteredValue<OutsideT, InsideT>(
+                gameItem,
+                propertyName,
+                defaultValue);
+        }
+
+        return result;
+    }
+
+    template<typename OutsideT, typename InsideT>
     std::vector<OutsideT> getDirectValueCollection (
         GameItem const * gameItem,
         std::string const & propertyName,
@@ -217,6 +250,32 @@ protected:
         if (isValidGameItem(gameItem))
         {
             result = getValueCollection<OutsideT, InsideT>(
+                gameItem, propertyName, defaultValue);
+        }
+
+        return result;
+    }
+
+    template<typename OutsideT, typename InsideT>
+    std::vector<OutsideT> getChainedValueCollection (
+        GameItem const * gameItem,
+        std::string const & propertyName,
+        OutsideT const & defaultValue) const
+    {
+        std::vector<OutsideT> result;
+        if (isValidGameItem(gameItem))
+        {
+            result = getValueCollection<OutsideT, InsideT>(
+                gameItem, propertyName, defaultValue);
+            if (result.empty())
+            {
+                result = getRegisteredValueCollection<OutsideT, InsideT>(
+                    gameItem, propertyName, defaultValue);
+            }
+        }
+        else
+        {
+            result = getRegisteredValueCollection<OutsideT, InsideT>(
                 gameItem, propertyName, defaultValue);
         }
 

@@ -1,5 +1,6 @@
 #include "Display.h"
 
+#include "ASCII.h"
 #include "ComponentDrawable.h"
 #include "ComponentHealth.h"
 #include "ComponentLocateable.h"
@@ -29,12 +30,19 @@ void Display::clear ()
 
 void Display::update ()
 {
-    for (auto const & line: mMapOutputLines)
+    auto reset = ASCIIEscape::graphicSequence({ASCIIGraphic::ResetAll});
+    for (auto const & line: mMapOutput)
     {
-        mGame->output() << line << std::endl;
+        for (auto const & symbol: line)
+        {
+            mGame->output() << symbol << reset;
+        }
+        mGame->output() << std::endl;
     }
 
-    mGame->output() << "-------------------------------" << std::endl;
+    mGame->output()
+        << "-------------------------------"
+        << std::endl;
 
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
     mGame->output() << "Character ";
@@ -70,28 +78,12 @@ void Display::update ()
 
     mGame->output() << "-------------------------------" << std::endl;
 
-    mMapOutputLines.clear();
     mDialogOutputLines.clear();
     mImportantLocations.clear();
 }
 
-void Display::beginStreamingToMap ()
-{
-    mMapBuffer.str("");
-    mMapBuffer.clear();
-}
-
-void Display::endStreamingToMap ()
-{
-    std::string line;
-    while (getline(mMapBuffer, line))
-    {
-        mMapOutputLines.push_back(line);
-    }
-}
-
 void Display::setMapSymbol (
-    char symbol,
+    std::string const & symbol,
     Point const & location,
     bool important)
 {
@@ -118,31 +110,19 @@ void Display::setMapSymbol (
         return;
     }
 
-    while (mMapOutputLines.size()
+    while (mMapOutput.size()
         <= static_cast<unsigned int>(scrolledLoc.y))
     {
-        mMapOutputLines.push_back("");
+        mMapOutput.push_back(std::vector<std::string>());
     }
 
-    //  g g l <- tiles with leading spaces
-    //  0 1 2 <- location x coordinate of tile
-    // 012345 <- display position indices including empty spaces
-    //
-    // The tile location 0 needs to map to the display index 1,
-    // the tile at location 1 needs to map to display index 3,
-    // etc. We need to double the location coordinate and then
-    // add one.
-    int spacedX = scrolledLoc.x * 2 + 1;
-
-    if (mMapOutputLines[scrolledLoc.y].size()
-        <= static_cast<unsigned int>(spacedX))
+    while (mMapOutput[scrolledLoc.y].size()
+        <= static_cast<unsigned int>(scrolledLoc.x))
     {
-        unsigned int length = spacedX -
-            mMapOutputLines[scrolledLoc.y].size() + 1;
-        mMapOutputLines[scrolledLoc.y] += std::string(length, ' ');
+        mMapOutput[scrolledLoc.y].push_back("");
     }
 
-    mMapOutputLines[scrolledLoc.y][spacedX] = symbol;
+    mMapOutput[scrolledLoc.y][scrolledLoc.x] = symbol;
 
     if (important)
     {
@@ -217,11 +197,6 @@ void Display::endStreamingToDialog ()
     {
         mDialogOutputLines.push_back(line);
     }
-}
-
-std::ostream & Display::mapBuffer ()
-{
-    return mMapBuffer;
 }
 
 std::ostream & Display::dialogBuffer ()

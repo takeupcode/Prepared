@@ -26,4 +26,13 @@ inline int pointToRowMajorIndex (Point const & point, int width)
     return point.y * width + point.x;
 }
 
+inline Point rowMajorIndexToPoint (int index, int width)
+{
+    int x = index % width;
+    int y = index / width;
+    Point point(x, y);
+
+    return point;
+}
+
 #endif // POINT_H

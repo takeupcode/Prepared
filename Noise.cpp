@@ -5,7 +5,9 @@
 #include "Math.h"
 #include "NoiseUtil.h"
 
+#include <chrono>
 #include <cmath>
+#include <ctime>
 #include <random>
 
 Noise::Noise (
@@ -22,7 +24,8 @@ Noise::Noise (
 {
     if (mSeed == 0)
     {
-        mSeed = std::random_device()();
+        mSeed = std::chrono::system_clock::now().
+            time_since_epoch().count();
     }
 }
 

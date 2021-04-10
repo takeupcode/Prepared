@@ -3,353 +3,461 @@
 #include "Lerp.h"
 #include "Math.h"
 #include "Noise.h"
+#include "Point.h"
 
 #include <algorithm>
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <stack>
+#include <unordered_map>
 #include <vector>
 
-void calculateQuadrantOutline (
+double getNoiseRadius (
     Noise const & noise,
-    double targetRadius,
+    unsigned int targetRadius,
     unsigned int layers,
-    std::vector<std::vector<bool>> & quadrant,
-    double startingDegrees,
-    bool anglesIncreaseFromStart,
-    int & xMax,
-    int & yMax
-    )
+    double degrees)
 {
-    const int cycleDivisor = 40;
+    double const cycleDivisor = 40.0;
     double noiseValue = 0;
-    int y = 0;
-    int x = 0;
-    while (true)
+
+    noiseValue = static_cast<double>(targetRadius) + noise.generate(
+        degrees / cycleDivisor,
+        layers,
+        360.0 / cycleDivisor);
+
+    return noiseValue;
+}
+
+std::vector<Point2i> getNearbyPoints (
+    Point2i const & currentPoint,
+    Point2i const & backPoint)
+{
+    std::vector<Point2i> result;
+
+    // Return points in the following order where
+    // p is the point given.
+    // 0 1 2
+    // 3 p 4
+    // 5 6 7
+    Point2i nearbyPoint;
+    nearbyPoint = Point2i(currentPoint.x - 1, currentPoint.y - 1);
+    if (nearbyPoint != backPoint)
     {
-        auto & newRow = quadrant.emplace_back();
+        result.push_back(nearbyPoint);
+    }
+    else
+    {
+        result.emplace_back(0, 0);
+    }
+    nearbyPoint = Point2i(currentPoint.x    , currentPoint.y - 1);
+    if (nearbyPoint != backPoint)
+    {
+        result.push_back(nearbyPoint);
+    }
+    else
+    {
+        result.emplace_back(0, 0);
+    }
+    nearbyPoint = Point2i(currentPoint.x + 1, currentPoint.y - 1);
+    if (nearbyPoint != backPoint)
+    {
+        result.push_back(nearbyPoint);
+    }
+    else
+    {
+        result.emplace_back(0, 0);
+    }
+    nearbyPoint = Point2i(currentPoint.x - 1, currentPoint.y    );
+    if (nearbyPoint != backPoint)
+    {
+        result.push_back(nearbyPoint);
+    }
+    else
+    {
+        result.emplace_back(0, 0);
+    }
+    nearbyPoint = Point2i(currentPoint.x + 1, currentPoint.y    );
+    if (nearbyPoint != backPoint)
+    {
+        result.push_back(nearbyPoint);
+    }
+    else
+    {
+        result.emplace_back(0, 0);
+    }
+    nearbyPoint = Point2i(currentPoint.x - 1, currentPoint.y + 1);
+    if (nearbyPoint != backPoint)
+    {
+        result.push_back(nearbyPoint);
+    }
+    else
+    {
+        result.emplace_back(0, 0);
+    }
+    nearbyPoint = Point2i(currentPoint.x    , currentPoint.y + 1);
+    if (nearbyPoint != backPoint)
+    {
+        result.push_back(nearbyPoint);
+    }
+    else
+    {
+        result.emplace_back(0, 0);
+    }
+    nearbyPoint = Point2i(currentPoint.x + 1, currentPoint.y + 1);
+    if (nearbyPoint != backPoint)
+    {
+        result.push_back(nearbyPoint);
+    }
+    else
+    {
+        result.emplace_back(0, 0);
+    }
 
-        if (y == 0)
+    return result;
+}
+
+std::vector<Point2i> getStartPoints (double start)
+{
+    std::vector<Point2i> result;
+
+    // Return points in the following order where
+    // start is the positive x axis zero crossing
+    // and should line up between 1 and 4. Taking
+    // the floor should give the point 1 x value.
+    // 0 1 2
+    // 3 4 5
+
+    int startFloor = dtoiflr(start);
+    result.emplace_back(startFloor - 1,  0);
+    result.emplace_back(startFloor    ,  0);
+    result.emplace_back(startFloor + 1,  0);
+    result.emplace_back(startFloor - 1, -1);
+    result.emplace_back(startFloor    , -1);
+    result.emplace_back(startFloor + 1, -1);
+
+    return result;
+}
+
+void calculateDifferences (
+    Noise const & noise,
+    unsigned int targetRadius,
+    unsigned int layers,
+    std::unordered_map<Point2i, double> & differences,
+    std::vector<Point2i> const & points)
+{
+    for (auto & point: points)
+    {
+        if (differences.find(point) != differences.end())
         {
-            noiseValue = targetRadius + noise.generate(
-                startingDegrees / cycleDivisor,
-                layers,
-                360 / cycleDivisor);
+            continue;
+        }
 
-            // The floor is just inside the outline.
-            x = dtoiflr(noiseValue);
+        // Get the center of the point as a Point2d
+        Point2d calcPoint {point.x + 0.5, point.y + 0.5};
+        double calcLengthSquared =
+            calcPoint.x * calcPoint.x + calcPoint.y * calcPoint.y;
+        double calcAngle = ptoa(calcPoint);
 
-            // We'll assume that noise cannot be so deep that it
-            // crosses into other quadrants from a higher angle.
-            if (x < 0)
-            {
-                x = 0;
-            }
+        double noiseRadius = getNoiseRadius(
+            noise,
+            targetRadius,
+            layers,
+            calcAngle);
+        double noiseRadiusSquared = noiseRadius * noiseRadius;
 
-            // Increment to get outside the outline.
-            ++x;
-            xMax = x;
+        double difference =
+            std::abs(noiseRadiusSquared - calcLengthSquared);
+        differences[point] = difference;
+    }
+};
 
-            std::fill_n(std::back_inserter(newRow), xMax + 1, true);
-            newRow[x] = false;
+Point2i getStartPoint (
+    Noise const & noise,
+    unsigned int targetRadius,
+    unsigned int layers,
+    std::unordered_map<Point2i, double> & differences)
+{
+    // Begin at 0 degrees and figure out the closest point.
+    double startRadius = getNoiseRadius(
+        noise,
+        targetRadius,
+        layers,
+        0.0);
+
+    auto startPoints = getStartPoints(startRadius);
+    calculateDifferences(noise,
+        targetRadius,
+        layers,
+        differences,
+        startPoints);
+
+    double minDiff = std::numeric_limits<double>::max();
+
+    Point2i result;
+    for (auto & point: startPoints)
+    {
+        if (differences[point] < minDiff)
+        {
+            result = point;
+            minDiff = differences[point];
+        }
+    }
+
+    return result;
+}
+
+Point2i getNearestPoint (
+    Noise const & noise,
+    unsigned int targetRadius,
+    unsigned int layers,
+    std::unordered_map<Point2i, double> & differences,
+    Point2i const & currentPoint,
+    Point2i const & backPoint)
+{
+    auto nearbyPoints = getNearbyPoints(currentPoint, backPoint);
+    calculateDifferences(noise,
+        targetRadius,
+        layers,
+        differences,
+        nearbyPoints);
+
+    double minDiff = std::numeric_limits<double>::max();
+
+    Point2i result;
+    unsigned int nearestIndex = 0;
+    for (unsigned int i = 0; i < nearbyPoints.size(); ++i)
+    {
+        if (differences[nearbyPoints[i]] < minDiff)
+        {
+            result = nearbyPoints[i];
+            nearestIndex = i;
+            minDiff = differences[nearbyPoints[i]];
+        }
+    }
+
+    // If the nearest point is diagonal, then we instead
+    // choose one of the two points right next to the
+    // given point. This makes sure that the outline will
+    // not have any diagonal gaps.
+    if (nearestIndex == 0)
+    {
+        // Choose between the point to the top or left.
+        if (differences[nearbyPoints[1]] <
+            differences[nearbyPoints[3]])
+        {
+            result = nearbyPoints[1];
         }
         else
         {
-            // We'll be done with this quadrant when we can go an
-            // entire row with all the points being outside the
-            // outline.
-            bool done = true;
-            std::fill_n(std::back_inserter(newRow), xMax + 1, true);
-
-            // If the last point is still inside the outline, then we
-            // need to start increasing the width. This will affect
-            // the higher rows by increasing xMax.
-            bool lastPointInside = false;
-
-            x = 0;
-            while (x <= xMax)
-            {
-                double angle = ptoa({x, y});
-                if (anglesIncreaseFromStart)
-                {
-                    angle = startingDegrees + angle;
-                }
-                else
-                {
-                    angle = startingDegrees - angle;
-                }
-                noiseValue = targetRadius + noise.generate(
-                    angle / cycleDivisor,
-                    layers,
-                    360 / cycleDivisor);
-                noiseValue *= noiseValue;
-
-                double pointDistanceSquared = x * x + y * y;
-                if (pointDistanceSquared > noiseValue)
-                {
-                    newRow[x] = false;
-                    lastPointInside = false;
-                }
-                else
-                {
-                    done = false;
-                    lastPointInside = true;
-                }
-
-                ++x;
-            }
-
-            if (lastPointInside)
-            {
-                while (true)
-                {
-                    ++xMax;
-                    newRow.push_back(true);
-
-                    double angle = ptoa({x, y});
-                    if (anglesIncreaseFromStart)
-                    {
-                        angle = startingDegrees + angle;
-                    }
-                    else
-                    {
-                        angle = startingDegrees - angle;
-                    }
-                    noiseValue = targetRadius + noise.generate(
-                        angle / cycleDivisor,
-                        layers,
-                        360 / cycleDivisor);
-                    noiseValue *= noiseValue;
-
-                    double pointDistanceSquared = x * x + y * y;
-                    if (pointDistanceSquared > noiseValue)
-                    {
-                        newRow[x] = false;
-                        break;
-                    }
-
-                    ++x;
-                }
-            }
-
-            if (done)
-            {
-                break;
-            }
+            result = nearbyPoints[3];
         }
-        ++y;
+    }
+    else if (nearestIndex == 2)
+    {
+        // Choose between the point to the top or right.
+        if (differences[nearbyPoints[1]] <
+            differences[nearbyPoints[4]])
+        {
+            result = nearbyPoints[1];
+        }
+        else
+        {
+            result = nearbyPoints[4];
+        }
+    }
+    else if (nearestIndex == 5)
+    {
+        // Choose between the point to the bottom or left.
+        if (differences[nearbyPoints[6]] <
+            differences[nearbyPoints[3]])
+        {
+            result = nearbyPoints[6];
+        }
+        else
+        {
+            result = nearbyPoints[3];
+        }
+    }
+    else if (nearestIndex == 7)
+    {
+        // Choose between the point to the bottom or right.
+        if (differences[nearbyPoints[6]] <
+            differences[nearbyPoints[4]])
+        {
+            result = nearbyPoints[6];
+        }
+        else
+        {
+            result = nearbyPoints[4];
+        }
     }
 
-    yMax = y;
+    return result;
 }
 
-std::vector<std::vector<bool>> createOutline (int seed)
+void adjustMinMaxValues (Point2i const & point,
+    int & minX,
+    int & maxX,
+    int & minY,
+    int & maxY)
+{
+    if (point.x < minX)
+    {
+        minX = point.x;
+    }
+    if (point.x > maxX)
+    {
+        maxX = point.x;
+    }
+    if (point.y < minY)
+    {
+        minY = point.y;
+    }
+    if (point.y > maxY)
+    {
+        maxY = point.y;
+    }
+}
+
+std::vector<std::vector<bool>> createMask (
+    int seed,
+    unsigned int targetRadius,
+    unsigned int borderWidth,
+    unsigned int layers)
 {
     Noise noise(seed, 1, 4);
-    seed = noise.seed();
 
-    const double targetRadius = 25;
-    std::vector<std::vector<bool>> quadrant1;
-    std::vector<std::vector<bool>> quadrant2;
-    std::vector<std::vector<bool>> quadrant3;
-    std::vector<std::vector<bool>> quadrant4;
-    unsigned int layers = 2;
+    std::vector<Point2i> points;
+    std::unordered_map<Point2i, double> differences;
+    int minX = std::numeric_limits<int>::max();
+    int maxX = std::numeric_limits<int>::min();
+    int minY = std::numeric_limits<int>::max();
+    int maxY = std::numeric_limits<int>::min();
 
-    int q1xMax = 0;
-    int q1yMax = 0;
-    int q2xMax = 0;
-    int q2yMax = 0;
-    int q3xMax = 0;
-    int q3yMax = 0;
-    int q4xMax = 0;
-    int q4yMax = 0;
+    auto startPoint = getStartPoint (
+        noise,
+        targetRadius,
+        layers,
+        differences);
+    points.push_back(startPoint);
+    adjustMinMaxValues(startPoint, minX, maxX, minY, maxY);
 
-    calculateQuadrantOutline(noise, targetRadius, layers,
-        quadrant1, 0.0, true, q1xMax, q1yMax);
+    auto lastPoint = startPoint;
+    auto backPoint = startPoint;
+    while (true)
+    {
+        auto nextPoint = getNearestPoint(
+        noise,
+        targetRadius,
+        layers,
+        differences,
+        lastPoint,
+        backPoint);
 
-    calculateQuadrantOutline(noise, targetRadius, layers,
-        quadrant2, 180.0, false, q2xMax, q2yMax);
+        if (nextPoint == startPoint)
+        {
+            break;
+        }
 
-    calculateQuadrantOutline(noise, targetRadius, layers,
-        quadrant3, 180.0, true, q3xMax, q3yMax);
+        backPoint = lastPoint;
+        lastPoint = nextPoint;
+        points.push_back(nextPoint);
+        adjustMinMaxValues(nextPoint, minX, maxX, minY, maxY);
+    }
 
-    calculateQuadrantOutline(noise, targetRadius, layers,
-        quadrant4, 360.0, false, q4xMax, q4yMax);
-
-    int leftxMax = std::max(q2xMax, q3xMax);
-    int rightxMax = std::max(q1xMax, q4xMax);
-    int topyMax = std::max(q1yMax, q2yMax);
-    int bottomyMax = std::max(q3yMax, q4yMax);
-
-    int width = leftxMax + rightxMax + 1;
-    int height = topyMax + bottomyMax + 1;
+    int width = maxX - minX + 1 + borderWidth * 2;
+    int height = maxY - minY + 1 + borderWidth * 2;
 
     std::vector<std::vector<bool>> result;
+    for (int y = 0; y < height; ++y)
+    {
+        auto & resultRow = result.emplace_back();
+        resultRow = std::vector<bool>(width);
+    }
 
-    std::string fileName = "./outline";
+    for (auto & point: points)
+    {
+        result[point.y + borderWidth][point.x + borderWidth] = true;
+    }
+
+    // Flood fill the outlined bools.
+    std::stack<Point2i> fillPoints;
+    fillPoints.emplace(width / 2, height / 2);
+    result[height / 2][width / 2] = true;
+    while (!fillPoints.empty())
+    {
+        auto point = fillPoints.top();
+        fillPoints.pop();
+
+        if (!result[point.y - 1][point.x])
+        {
+            fillPoints.emplace(point.y - 1, point.x);
+            result[point.y - 1][point.x] = true;
+        }
+        if (!result[point.y + 1][point.x])
+        {
+            fillPoints.emplace(point.y + 1, point.x);
+            result[point.y + 1][point.x] = true;
+        }
+        if (!result[point.y][point.x - 1])
+        {
+            fillPoints.emplace(point.y, point.x - 1);
+            result[point.y][point.x - 1] = true;
+        }
+        if (!result[point.y][point.x + 1])
+        {
+            fillPoints.emplace(point.y, point.x + 1);
+            result[point.y][point.x + 1] = true;
+        }
+    }
+
+    std::string fileName = "./mask";
     fileName += std::to_string(seed);
     fileName += ".ppm";
     std::ofstream ofs;
     ofs.open(fileName, std::ios::out | std::ios::binary | std::ios::trunc);
     ofs << "P6\n" << width << " " << height << "\n255\n";
-
-    // Q1 and Q2 both print the high y values first.
-    for (int y = topyMax; y >= 0; --y)
+    for (int y = 0; y < height; ++y)
     {
-        auto & resultRow = result.emplace_back();
-
-        // Q2 x values are backwards. We print the high x values first.
-        if (y > q2yMax)
+        for (int x = 0; x < width; ++x)
         {
-            for (int x = leftxMax; x >= 0; --x)
+            unsigned char n = 0;
+            // Some rows could have fewer values.
+            if (result[y][x])
             {
-                unsigned char n = 0;
-                ofs << n << n << n;
-
-                resultRow.push_back(false);
+                n = 255;
             }
-        }
-        else
-        {
-            for (int x = leftxMax; x >= 0; --x)
-            {
-                bool resultValue = false;
-                unsigned char n = 0;
-                // Some rows could have fewer values.
-                if (quadrant2[y].size() > static_cast<unsigned int>(x) &&
-                    quadrant2[y][x])
-                {
-                    n = 255;
-                    resultValue = true;
-                }
-                ofs << n << n << n;
-
-                resultRow.push_back(resultValue);
-            }
-        }
-
-        // Q1 x values are correct. We print the low x values first.
-        // But we skip x == 0 because we already printed it from Q2.
-        // Q1 and Q2 overlap when x == 0.
-        if (y > q1yMax)
-        {
-            for (int x = 1; x <= rightxMax; ++x)
-            {
-                unsigned char n = 0;
-                ofs << n << n << n;
-
-                resultRow.push_back(false);
-            }
-        }
-        else
-        {
-            for (int x = 1; x <= rightxMax; ++x)
-            {
-                bool resultValue = false;
-                unsigned char n = 0;
-                // Some rows could have fewer values.
-                if (quadrant1[y].size() > static_cast<unsigned int>(x) &&
-                    quadrant1[y][x])
-                {
-                    n = 255;
-                    resultValue = true;
-                }
-                ofs << n << n << n;
-
-                resultRow.push_back(resultValue);
-            }
+            ofs << n << n << n;
         }
     }
-
-    // Q3 and Q4 both print the low y values first. But we skip
-    // the points when y == 0 because Q3 and Q4 overlap with Q1
-    // and Q2 when y == 0.
-    for (int y = 1; y <= bottomyMax; ++y)
-    {
-        auto & resultRow = result.emplace_back();
-
-        // Q3 x values are backwards. We print the high x values first.
-        if (y > q3yMax)
-        {
-            for (int x = leftxMax; x >= 0; --x)
-            {
-                unsigned char n = 0;
-                ofs << n << n << n;
-
-                resultRow.push_back(false);
-            }
-        }
-        else
-        {
-            for (int x = leftxMax; x >= 0; --x)
-            {
-                bool resultValue = false;
-                unsigned char n = 0;
-                // Some rows could have fewer values.
-                if (quadrant3[y].size() > static_cast<unsigned int>(x) &&
-                    quadrant3[y][x])
-                {
-                    n = 255;
-                    resultValue = true;
-                }
-                ofs << n << n << n;
-
-                resultRow.push_back(resultValue);
-            }
-        }
-
-        // Q4 x values are correct. We print the low x values first.
-        // But we skip x == 0 because we already printed it from Q3.
-        // Q3 and Q4 overlap when x == 0.
-        if (y > q4yMax)
-        {
-            for (int x = 1; x <= rightxMax; ++x)
-            {
-                unsigned char n = 0;
-                ofs << n << n << n;
-
-                resultRow.push_back(false);
-            }
-        }
-        else
-        {
-            for (int x = 1; x <= rightxMax; ++x)
-            {
-                bool resultValue = false;
-                unsigned char n = 0;
-                // Some rows could have fewer values.
-                if (quadrant4[y].size() > static_cast<unsigned int>(x) &&
-                    quadrant4[y][x])
-                {
-                    n = 255;
-                    resultValue = true;
-                }
-                ofs << n << n << n;
-
-                resultRow.push_back(resultValue);
-            }
-        }
-    }
-
     ofs.close();
+
     return result;
 }
 
-std::vector<std::vector<GameMap::Terrain>> GameMap::create ()
+std::vector<std::vector<GameMap::Terrain>> GameMap::create (
+    int seed,
+    unsigned int targetRadius,
+    unsigned int borderWidth,
+    unsigned int layers)
 {
-    Noise noise;
-    int seed = noise.seed();
+    Noise noise(seed);
+    seed = noise.seed();
 
-    std::vector<std::vector<bool>> outline = createOutline (seed);
+    std::vector<std::vector<bool>> mask =
+        createMask(seed, targetRadius, borderWidth, layers);
 
-    const unsigned int height = outline.size();
+    const unsigned int height =
+        static_cast<unsigned int>(mask.size());
 
-    // All the rows in the outline are the same width. Use the
+    // All the rows in the mask are the same width. Use the
     // first to get the width.
-    const unsigned int width = outline[0].size();
+    const unsigned int width =
+        static_cast<unsigned int>(mask[0].size());
 
     double *noiseMap = new double[width * height];
-    unsigned int layers = 1;
 
     double min = std::numeric_limits<double>::max();
     double max = std::numeric_limits<double>::min();
@@ -367,7 +475,7 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create ()
             {
                 min = noiseValue;
             }
-            else if (noiseValue > max)
+            if (noiseValue > max)
             {
                 max = noiseValue;
             }
@@ -376,10 +484,6 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create ()
 
     double minMaxShift = -min;
     double minMaxRange = max - min;
-    if (minMaxRange == 0)
-    {
-        minMaxRange = 1;
-    }
 
     std::string fileName = "./noise";
     fileName += std::to_string(seed);
@@ -401,7 +505,7 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create ()
                 (noiseMap[i] + minMaxShift) / minMaxRange * 255
                 );
 
-            if (!outline[y][x])
+            if (!mask[y][x])
             {
                 n = 0;
             }
@@ -420,7 +524,7 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create ()
                     << static_cast<unsigned char>(100)
                     << static_cast<unsigned char>(0);
 
-                resultRow.push_back(Terrain::Trees);
+                resultRow.push_back(Terrain::Tree);
             }
             else if (n >= 75)
             {

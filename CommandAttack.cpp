@@ -49,11 +49,11 @@ std::unique_ptr<Command> CommandAttack::tryCreate (
         new CommandAttack(characterId));
 }
 
-std::vector<Point> attackLocations (
-    Point const & location,
+std::vector<Point2i> attackLocations (
+    Point2i const & location,
     Direction direction)
 {
-    std::vector<Point> result;
+    std::vector<Point2i> result;
 
     switch (direction)
     {

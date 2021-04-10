@@ -20,6 +20,7 @@ inline int dtoiflr (double d)
 }
 
 // point to angle between origin and x axis
+template <typename Point>
 inline double ptoa (Point const & point)
 {
     double result = std::atan2(point.y, point.x);

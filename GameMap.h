@@ -11,12 +11,16 @@ public:
         Water,
         Sand,
         Marsh,
-        Trees,
+        Tree,
         Grass,
         Ice
     };
 
-    static std::vector<std::vector<Terrain>> create ();
+    static std::vector<std::vector<Terrain>> create (
+        int seed = 0,
+        unsigned int targetRadius = 25,
+        unsigned int borderWidth = 5,
+        unsigned int layers = 2);
 };
 
 #endif // GAMEMAP_H

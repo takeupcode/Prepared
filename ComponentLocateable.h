@@ -17,13 +17,13 @@ public:
         return PermanentId;
     }
 
-    Point location (
+    Point2i location (
         GameItem const * gameItem,
-        Point const & defaultValue = {0, 0}) const;
+        Point2i const & defaultValue = {0, 0}) const;
 
     void setLocation (
         GameItem * gameItem,
-        Point const & value);
+        Point2i const & value);
 
     Direction direction (
         GameItem const * gameItem,

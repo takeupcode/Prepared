@@ -84,17 +84,17 @@ void Display::update ()
 
 void Display::setMapSymbol (
     std::string const & symbol,
-    Point const & location,
+    Point2i const & location,
     bool important)
 {
-    Point scrolledLoc = location;
+    Point2i scrolledLoc = location;
     scrolledLoc.x -= mMapScrollOrigin.x;
     scrolledLoc.y -= mMapScrollOrigin.y;
 
     if (scrolledLoc.x < 0 || scrolledLoc.x >= MapDisplayWidth ||
         scrolledLoc.y < 0 || scrolledLoc.y >= MapDisplayHeight)
     {
-        // Point coordinates are signed but they should never
+        // Point2i coordinates are signed but they should never
         // be negative at this point. They're allowed to go
         // negative briefly so that we can test for valid
         // movement. If any point coordinate is outside of the
@@ -130,13 +130,13 @@ void Display::setMapSymbol (
     }
 }
 
-Point Display::mapScrollOrigin ()
+Point2i Display::mapScrollOrigin ()
 {
     return mMapScrollOrigin;
 }
 
 void Display::ensureVisibleInMap (
-    Point const & location,
+    Point2i const & location,
     int mapWidth,
     int mapHeight)
 {

@@ -4,11 +4,11 @@
 
 std::string const ComponentLocateable::PermanentId = "locateable";
 
-Point ComponentLocateable::location (
+Point2i ComponentLocateable::location (
     GameItem const * gameItem,
-    Point const & defaultValue) const
+    Point2i const & defaultValue) const
 {
-    Point result = defaultValue;
+    Point2i result = defaultValue;
 
     result.x = getDirectValue<int, int>(gameItem, "x", defaultValue.x);
     result.y = getDirectValue<int, int>(gameItem, "y", defaultValue.y);
@@ -18,7 +18,7 @@ Point ComponentLocateable::location (
 
 void ComponentLocateable::setLocation (
     GameItem * gameItem,
-    Point const & value)
+    Point2i const & value)
 {
     setDirectValue<int, int>(gameItem, "x", value.x);
     setDirectValue<int, int>(gameItem, "y", value.y);

@@ -7,7 +7,7 @@
 #include "Display.h"
 #include "Game.h"
 
-Point calculateProposedLocation (Point current,
+Point2i calculateProposedLocation (Point2i current,
     Direction direction,
     int distance = 1)
 {

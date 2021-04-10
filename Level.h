@@ -18,18 +18,18 @@ public:
 
     void draw () const;
 
-    std::vector<Point> entryLocations (
+    std::vector<Point2i> entryLocations (
         unsigned int count) const;
 
     void spawnCreatures () const;
 
-    Point calculateMoveLocation (
-        Point const & current,
-        Point const & proposed,
+    Point2i calculateMoveLocation (
+        Point2i const & current,
+        Point2i const & proposed,
         int moveLayerId) const;
 
-    GameItem * findTile (Point const & location);
-    GameItem const * findTile (Point const & location) const;
+    GameItem * findTile (Point2i const & location);
+    GameItem const * findTile (Point2i const & location) const;
 
     int width ();
     int height ();
@@ -40,7 +40,7 @@ public:
         int layerId,
         std::vector<int> const & collidingLayers);
 
-    Point findRandomLocationOnLand () const;
+    Point2i findRandomLocationOnLand () const;
 
 private:
     GameItem createRat () const;
@@ -50,7 +50,7 @@ private:
     unsigned int mWidth;
     unsigned int mHeight;
     std::vector<GameItem> mTiles;
-    std::vector<Point> mEntryLocations;
+    std::vector<Point2i> mEntryLocations;
     std::unordered_map<int, GameItem> mLayeredTiles;
     std::unordered_map<int, std::vector<int>> mCollidingLayerIds;
 };

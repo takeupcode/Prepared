@@ -35,7 +35,7 @@ GameStateInventory::GameStateInventory (
     auto level = mGame->level();
 
     auto locateable = ComponentRegistry::find<ComponentLocateable>();
-    Point location = locateable->location(mCharacter);
+    Point2i location = locateable->location(mCharacter);
 
     if (level != nullptr)
     {

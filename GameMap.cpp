@@ -10,6 +10,7 @@
 #include <iterator>
 #include <limits>
 #include <stack>
+#include <unordered_set>
 #include <unordered_map>
 #include <vector>
 
@@ -28,94 +29,6 @@ double getNoiseRadius (
         360.0 / cycleDivisor);
 
     return noiseValue;
-}
-
-std::vector<Point2i> getNearbyPoints (
-    Point2i const & currentPoint,
-    Point2i const & backPoint)
-{
-    std::vector<Point2i> result;
-
-    // Return points in the following order where
-    // p is the point given.
-    // 0 1 2
-    // 3 p 4
-    // 5 6 7
-    Point2i nearbyPoint;
-    nearbyPoint = Point2i(currentPoint.x - 1, currentPoint.y - 1);
-    if (nearbyPoint != backPoint)
-    {
-        result.push_back(nearbyPoint);
-    }
-    else
-    {
-        result.emplace_back(0, 0);
-    }
-    nearbyPoint = Point2i(currentPoint.x    , currentPoint.y - 1);
-    if (nearbyPoint != backPoint)
-    {
-        result.push_back(nearbyPoint);
-    }
-    else
-    {
-        result.emplace_back(0, 0);
-    }
-    nearbyPoint = Point2i(currentPoint.x + 1, currentPoint.y - 1);
-    if (nearbyPoint != backPoint)
-    {
-        result.push_back(nearbyPoint);
-    }
-    else
-    {
-        result.emplace_back(0, 0);
-    }
-    nearbyPoint = Point2i(currentPoint.x - 1, currentPoint.y    );
-    if (nearbyPoint != backPoint)
-    {
-        result.push_back(nearbyPoint);
-    }
-    else
-    {
-        result.emplace_back(0, 0);
-    }
-    nearbyPoint = Point2i(currentPoint.x + 1, currentPoint.y    );
-    if (nearbyPoint != backPoint)
-    {
-        result.push_back(nearbyPoint);
-    }
-    else
-    {
-        result.emplace_back(0, 0);
-    }
-    nearbyPoint = Point2i(currentPoint.x - 1, currentPoint.y + 1);
-    if (nearbyPoint != backPoint)
-    {
-        result.push_back(nearbyPoint);
-    }
-    else
-    {
-        result.emplace_back(0, 0);
-    }
-    nearbyPoint = Point2i(currentPoint.x    , currentPoint.y + 1);
-    if (nearbyPoint != backPoint)
-    {
-        result.push_back(nearbyPoint);
-    }
-    else
-    {
-        result.emplace_back(0, 0);
-    }
-    nearbyPoint = Point2i(currentPoint.x + 1, currentPoint.y + 1);
-    if (nearbyPoint != backPoint)
-    {
-        result.push_back(nearbyPoint);
-    }
-    else
-    {
-        result.emplace_back(0, 0);
-    }
-
-    return result;
 }
 
 std::vector<Point2i> getStartPoints (double start)
@@ -140,37 +53,29 @@ std::vector<Point2i> getStartPoints (double start)
     return result;
 }
 
-void calculateDifferences (
+double calculateDifference (
     Noise const & noise,
     unsigned int targetRadius,
     unsigned int layers,
-    std::unordered_map<Point2i, double> & differences,
-    std::vector<Point2i> const & points)
+    Point2i const & point)
 {
-    for (auto & point: points)
-    {
-        if (differences.find(point) != differences.end())
-        {
-            continue;
-        }
+    // Get the center of the point as a Point2d
+    Point2d calcPoint {point.x + 0.5, point.y + 0.5};
+    double calcLengthSquared =
+        calcPoint.x * calcPoint.x + calcPoint.y * calcPoint.y;
+    double calcAngle = ptoa(calcPoint);
 
-        // Get the center of the point as a Point2d
-        Point2d calcPoint {point.x + 0.5, point.y + 0.5};
-        double calcLengthSquared =
-            calcPoint.x * calcPoint.x + calcPoint.y * calcPoint.y;
-        double calcAngle = ptoa(calcPoint);
+    double noiseRadius = getNoiseRadius(
+        noise,
+        targetRadius,
+        layers,
+        calcAngle);
+    double noiseRadiusSquared = noiseRadius * noiseRadius;
 
-        double noiseRadius = getNoiseRadius(
-            noise,
-            targetRadius,
-            layers,
-            calcAngle);
-        double noiseRadiusSquared = noiseRadius * noiseRadius;
+    double difference =
+        std::abs(noiseRadiusSquared - calcLengthSquared);
 
-        double difference =
-            std::abs(noiseRadiusSquared - calcLengthSquared);
-        differences[point] = difference;
-    }
+    return difference;
 };
 
 Point2i getStartPoint (
@@ -186,118 +91,94 @@ Point2i getStartPoint (
         layers,
         0.0);
 
+    Point2i result;
+    double minDiff = std::numeric_limits<double>::max();
     auto startPoints = getStartPoints(startRadius);
-    calculateDifferences(noise,
+    for (auto const & point: startPoints)
+    {
+        double difference = calculateDifference(noise,
         targetRadius,
         layers,
-        differences,
-        startPoints);
+        point);
 
-    double minDiff = std::numeric_limits<double>::max();
-
-    Point2i result;
-    for (auto & point: startPoints)
-    {
-        if (differences[point] < minDiff)
+        differences[point] = difference;
+        if (difference < minDiff)
         {
             result = point;
-            minDiff = differences[point];
+            minDiff = difference;
         }
     }
 
     return result;
 }
 
-Point2i getNearestPoint (
+std::vector<Point2i> getPath (
     Noise const & noise,
     unsigned int targetRadius,
-    unsigned int layers,
-    std::unordered_map<Point2i, double> & differences,
-    Point2i const & currentPoint,
-    Point2i const & backPoint)
+    unsigned int layers)
 {
-    auto nearbyPoints = getNearbyPoints(currentPoint, backPoint);
-    calculateDifferences(noise,
+    std::vector<Point2i> path;
+    std::unordered_set<Point2i> pathSet;
+    std::unordered_map<Point2i, double> differences;
+    auto startPoint = getStartPoint (
+        noise,
         targetRadius,
         layers,
-        differences,
-        nearbyPoints);
+        differences);
+    path.push_back(startPoint);
+    pathSet.insert(startPoint);
 
-    double minDiff = std::numeric_limits<double>::max();
+    while (true)
+    {
+        Point2i nextPoint;
+        double minDiff = std::numeric_limits<double>::max();
+        int dx[] = { 0,  0,  1, -1};
+        int dy[] = {-1,  1,  0,  0};
+        for (unsigned int i = 0; i < 4; ++i)
+        {
+            Point2i point(
+                path.back().x + dx[i],
+                path.back().y + dy[i]);
+            if (pathSet.find(point) != pathSet.end())
+            {
+                continue;
+            }
 
-    Point2i result;
-    unsigned int nearestIndex = 0;
-    for (unsigned int i = 0; i < nearbyPoints.size(); ++i)
-    {
-        if (differences[nearbyPoints[i]] < minDiff)
-        {
-            result = nearbyPoints[i];
-            nearestIndex = i;
-            minDiff = differences[nearbyPoints[i]];
-        }
-    }
+            double difference;
+            auto iter = differences.find(point);
+            if (iter == differences.end())
+            {
+                difference = calculateDifference(
+                    noise,
+                    targetRadius,
+                    layers,
+                    point);
+                differences[point] = difference;
+            }
+            else
+            {
+                difference = iter->second;
+            }
 
-    // If the nearest point is diagonal, then we instead
-    // choose one of the two points right next to the
-    // given point. This makes sure that the outline will
-    // not have any diagonal gaps.
-    if (nearestIndex == 0)
-    {
-        // Choose between the point to the top or left.
-        if (differences[nearbyPoints[1]] <
-            differences[nearbyPoints[3]])
-        {
-            result = nearbyPoints[1];
+            if (difference < minDiff)
+            {
+                nextPoint = point;
+                minDiff = difference;
+            }
         }
-        else
+        if (nextPoint == startPoint)
         {
-            result = nearbyPoints[3];
+            break;
         }
-    }
-    else if (nearestIndex == 2)
-    {
-        // Choose between the point to the top or right.
-        if (differences[nearbyPoints[1]] <
-            differences[nearbyPoints[4]])
-        {
-            result = nearbyPoints[1];
-        }
-        else
-        {
-            result = nearbyPoints[4];
-        }
-    }
-    else if (nearestIndex == 5)
-    {
-        // Choose between the point to the bottom or left.
-        if (differences[nearbyPoints[6]] <
-            differences[nearbyPoints[3]])
-        {
-            result = nearbyPoints[6];
-        }
-        else
-        {
-            result = nearbyPoints[3];
-        }
-    }
-    else if (nearestIndex == 7)
-    {
-        // Choose between the point to the bottom or right.
-        if (differences[nearbyPoints[6]] <
-            differences[nearbyPoints[4]])
-        {
-            result = nearbyPoints[6];
-        }
-        else
-        {
-            result = nearbyPoints[4];
-        }
+        path.push_back(nextPoint);
+        pathSet.insert(nextPoint);
     }
 
-    return result;
+    return path;
 }
 
-void adjustMinMaxValues (Point2i const & point,
+void adjustMinMaxValues (
+    Point2i const & point,
     int & minX,
     int & maxX,
     int & minY,
@@ -329,42 +210,19 @@ std::vector<std::vector<bool>> createMask (
 {
     Noise noise(seed, 1, 4);
 
-    std::vector<Point2i> points;
-    std::unordered_map<Point2i, double> differences;
     int minX = std::numeric_limits<int>::max();
     int maxX = std::numeric_limits<int>::min();
     int minY = std::numeric_limits<int>::max();
     int maxY = std::numeric_limits<int>::min();
 
-    auto startPoint = getStartPoint (
+    auto path = getPath (
         noise,
         targetRadius,
-        layers,
-        differences);
-    points.push_back(startPoint);
-    adjustMinMaxValues(startPoint, minX, maxX, minY, maxY);
+        layers);
 
-    auto lastPoint = startPoint;
-    auto backPoint = startPoint;
-    while (true)
+    for (auto const & point: path)
     {
-        auto nextPoint = getNearestPoint(
-        noise,
-        targetRadius,
-        layers,
-        differences,
-        lastPoint,
-        backPoint);
-
-        if (nextPoint == startPoint)
-        {
-            break;
-        }
-
-        backPoint = lastPoint;
-        lastPoint = nextPoint;
-        points.push_back(nextPoint);
-        adjustMinMaxValues(nextPoint, minX, maxX, minY, maxY);
+        adjustMinMaxValues(point, minX, maxX, minY, maxY);
     }
 
     int width = maxX - minX + 1 + borderWidth * 2;
@@ -377,7 +235,7 @@ std::vector<std::vector<bool>> createMask (
         resultRow = std::vector<bool>(width);
     }
 
-    for (auto & point: points)
+    for (auto const & point: path)
     {
         result[point.y + borderWidth][point.x + borderWidth] = true;
     }

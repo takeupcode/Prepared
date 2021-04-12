@@ -6,6 +6,7 @@
 #include "Point.h"
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <iterator>
 #include <limits>
@@ -31,85 +32,101 @@ double getNoiseRadius (
     return noiseValue;
 }
 
-std::vector<Point2i> getStartPoints (double start)
+// Returns a path from the start + 1 to the end.
+std::vector<Point2i> getStraightPath (
+    Point2i const & start,
+    Point2i const & end)
 {
-    std::vector<Point2i> result;
-
-    // Return points in the following order where
-    // start is the positive x axis zero crossing
-    // and should line up between 1 and 4. Taking
-    // the floor should give the point 1 x value.
-    // 0 1 2
-    // 3 4 5
-
-    int startFloor = dtoiflr(start);
-    result.emplace_back(startFloor - 1,  0);
-    result.emplace_back(startFloor    ,  0);
-    result.emplace_back(startFloor + 1,  0);
-    result.emplace_back(startFloor - 1, -1);
-    result.emplace_back(startFloor    , -1);
-    result.emplace_back(startFloor + 1, -1);
-
-    return result;
-}
-
-double calculateDifference (
-    Noise const & noise,
-    unsigned int targetRadius,
-    unsigned int layers,
-    Point2i const & point)
-{
-    // Get the center of the point as a Point2d
-    Point2d calcPoint {point.x + 0.5, point.y + 0.5};
-    double calcLengthSquared =
-        calcPoint.x * calcPoint.x + calcPoint.y * calcPoint.y;
-    double calcAngle = ptoa(calcPoint);
-
-    double noiseRadius = getNoiseRadius(
-        noise,
-        targetRadius,
-        layers,
-        calcAngle);
-    double noiseRadiusSquared = noiseRadius * noiseRadius;
-
-    double difference =
-        std::abs(noiseRadiusSquared - calcLengthSquared);
-
-    return difference;
-};
-
-Point2i getStartPoint (
-    Noise const & noise,
-    unsigned int targetRadius,
-    unsigned int layers,
-    std::unordered_map<Point2i, double> & differences)
-{
-    // Begin at 0 degrees and figure out the closest point.
-    double startRadius = getNoiseRadius(
-        noise,
-        targetRadius,
-        layers,
-        0.0);
-
-    Point2i result;
-    double minDiff = std::numeric_limits<double>::max();
-    auto startPoints = getStartPoints(startRadius);
-    for (auto const & point: startPoints)
+    std::vector<Point2i> path;
+    if (start == end)
     {
-        double difference = calculateDifference(noise,
-        targetRadius,
-        layers,
-        point);
+        return path;
+    }
 
-        differences[point] = difference;
-        if (difference < minDiff)
+    // Calculate path from the middle of the points given.
+    Point2d startDbl(0.5 + start.x, 0.5 + start.y);
+    Point2d endDbl(0.5 + end.x, 0.5 + end.y);
+
+    // Use DDA ray casting
+    Point2d direction = Point2d(
+        endDbl.x - startDbl.x,
+        endDbl.y - startDbl.y).unit();
+    Point2d unitSteps;
+    if (direction.x != 0.0 && direction.y != 0.0)
+    {
+        unitSteps.x = std::sqrt(
+            1 + (direction.y / direction.x) *
+            (direction.y / direction.x));
+        unitSteps.y = std::sqrt(
+            1 + (direction.x / direction.y) *
+            (direction.x / direction.y));
+    }
+    else
+    {
+        // Either x or y is zero. This is a straight
+        // line along an axis.
+        Point2i next = start;
+        while (true)
         {
-            result = point;
-            minDiff = difference;
+            next.x += direction.x;
+            next.y += direction.y;
+
+            path.push_back(next);
+
+            if (next == end)
+            {
+                return path;;
+            }
         }
     }
 
-    return result;
+    Point2i steps;
+    Point2d rayLengths;
+    if (direction.x < 0)
+    {
+        steps.x = -1;
+        rayLengths.x = (startDbl.x - start.x) * unitSteps.x;
+    }
+    else
+    {
+        steps.x = 1;
+        rayLengths.x = ((start.x + 1) - startDbl.x) * unitSteps.x;
+    }
+
+    if (direction.y < 0)
+    {
+        steps.y = -1;
+        rayLengths.y = (startDbl.y - start.y) * unitSteps.y;
+    }
+    else
+    {
+        steps.y = 1;
+        rayLengths.y = ((start.y + 1) - startDbl.y) * unitSteps.y;
+    }
+
+    Point2i next = start;
+    while (true)
+    {
+        if (rayLengths.x < rayLengths.y)
+        {
+            next.x += steps.x;
+            rayLengths.x += unitSteps.x;
+        }
+        else
+        {
+            next.y += steps.y;
+            rayLengths.y += unitSteps.y;
+        }
+
+        path.push_back(next);
+
+        if (next == end)
+        {
+            break;
+        }
+    }
+
+    return path;
 }
 
 std::vector<Point2i> getPath (
@@ -118,60 +135,33 @@ std::vector<Point2i> getPath (
     unsigned int layers)
 {
     std::vector<Point2i> path;
-    std::unordered_set<Point2i> pathSet;
-    std::unordered_map<Point2i, double> differences;
-    auto startPoint = getStartPoint (
+
+    double degrees = 0.0;
+    auto radius = getNoiseRadius (
         noise,
         targetRadius,
         layers,
-        differences);
-    path.push_back(startPoint);
-    pathSet.insert(startPoint);
+        degrees);
+    auto point = artop(degrees, radius);
+    path.push_back(point);
 
-    while (true)
+    for (degrees = 1.0; degrees <= 360.0; ++degrees)
     {
-        Point2i nextPoint;
-        double minDiff = std::numeric_limits<double>::max();
-        int dx[] = { 0,  0,  1, -1};
-        int dy[] = {-1,  1,  0,  0};
-        for (unsigned int i = 0; i < 4; ++i)
-        {
-            Point2i point(
-                path.back().x + dx[i],
-                path.back().y + dy[i]);
-            if (pathSet.find(point) != pathSet.end())
-            {
-                continue;
-            }
+        radius = getNoiseRadius (
+            noise,
+            targetRadius,
+            layers,
+            degrees);
+        point = artop(degrees, radius);
 
-            double difference;
-            auto iter = differences.find(point);
-            if (iter == differences.end())
-            {
-                difference = calculateDifference(
-                    noise,
-                    targetRadius,
-                    layers,
-                    point);
-                differences[point] = difference;
-            }
-            else
-            {
-                difference = iter->second;
-            }
+        auto points = getStraightPath(
+            path.back(),
+            point);
 
-            if (difference < minDiff)
-            {
-                nextPoint = point;
-                minDiff = difference;
-            }
-        }
-        if (nextPoint == startPoint)
+        for (auto const & next: points)
         {
-            break;
+            path.push_back(next);
         }
-        path.push_back(nextPoint);
-        pathSet.insert(nextPoint);
     }
 
     return path;
@@ -199,6 +189,46 @@ void adjustMinMaxValues (
     if (point.y > maxY)
     {
         maxY = point.y;
+    }
+}
+
+void floodFill (
+    int startX,
+    int startY,
+    int minX,
+    int minY,
+    int maxX,
+    int maxY,
+    std::vector<std::vector<bool>> & result)
+{
+    std::stack<Point2i> fillPoints;
+    fillPoints.emplace(startX, startY);
+    result[startY][startX] = true;
+    while (!fillPoints.empty())
+    {
+        Point2i point = fillPoints.top();
+        fillPoints.pop();
+
+        if (point.y != minY && !result[point.y - 1][point.x])
+        {
+            fillPoints.emplace(point.x, point.y - 1);
+            result[point.y - 1][point.x] = true;
+        }
+        if (point.y != maxY && !result[point.y + 1][point.x])
+        {
+            fillPoints.emplace(point.x, point.y + 1);
+            result[point.y + 1][point.x] = true;
+        }
+        if (point.x != minX && !result[point.y][point.x - 1])
+        {
+            fillPoints.emplace(point.x - 1, point.y);
+            result[point.y][point.x - 1] = true;
+        }
+        if (point.x != maxX && !result[point.y][point.x + 1])
+        {
+            fillPoints.emplace(point.x + 1, point.y);
+            result[point.y][point.x + 1] = true;
+        }
     }
 }
 
@@ -237,41 +267,12 @@ std::vector<std::vector<bool>> createMask (
 
     for (auto const & point: path)
     {
-        result[point.y + borderWidth][point.x + borderWidth] = true;
+        int resultY = point.y - minY + borderWidth;
+        int resultX = point.x - minX + borderWidth;
+        result[resultY][resultX] = true;
     }
 
-    // Flood fill the outlined bools.
-    std::stack<Point2i> fillPoints;
-    fillPoints.emplace(width / 2, height / 2);
-    result[height / 2][width / 2] = true;
-    while (!fillPoints.empty())
-    {
-        auto point = fillPoints.top();
-        fillPoints.pop();
-
-        if (!result[point.y - 1][point.x])
-        {
-            fillPoints.emplace(point.y - 1, point.x);
-            result[point.y - 1][point.x] = true;
-        }
-        if (!result[point.y + 1][point.x])
-        {
-            fillPoints.emplace(point.y + 1, point.x);
-            result[point.y + 1][point.x] = true;
-        }
-        if (!result[point.y][point.x - 1])
-        {
-            fillPoints.emplace(point.y, point.x - 1);
-            result[point.y][point.x - 1] = true;
-        }
-        if (!result[point.y][point.x + 1])
-        {
-            fillPoints.emplace(point.y, point.x + 1);
-            result[point.y][point.x + 1] = true;
-        }
-    }
-
-    std::string fileName = "./mask";
+    std::string fileName = "./outline";
     fileName += std::to_string(seed);
     fileName += ".ppm";
     std::ofstream ofs;
@@ -282,7 +283,6 @@ std::vector<std::vector<bool>> createMask (
         for (int x = 0; x < width; ++x)
         {
             unsigned char n = 0;
-            // Some rows could have fewer values.
             if (result[y][x])
             {
                 n = 255;
@@ -291,6 +291,88 @@ std::vector<std::vector<bool>> createMask (
         }
     }
     ofs.close();
+
+    // Flood fill the outlined bools from a known point
+    // inside the outline. This is not as easy as it seems.
+    // The only points we know for certain are the outside
+    // and the border points. We can first flood fill a
+    // portion of the outside. Don't need to do the entire
+    // border. And then use those identified outside points
+    // to make sure that we don't accidentally select an
+    // outside point when trying to flood fill the inside.
+    int outsideStartFillY = height / 2;
+    int outsideFillMargin = 5;
+    int outsideFillMinY = outsideStartFillY - outsideFillMargin;
+    std::vector<std::vector<bool>> outsideResult;
+    for (int y = 0; y < (outsideFillMargin * 2 + 1); ++y)
+    {
+        auto & outsideRow = outsideResult.emplace_back();
+        outsideRow = result[outsideFillMinY + y];
+    }
+    floodFill (
+        0,
+        0,
+        0,
+        0,
+        width - 1,
+        outsideFillMargin * 2,
+        outsideResult);
+
+    std::stack<Point2i> fillPoints;
+    int startFillY = height / 2;
+    int startFillX = -1;
+    bool foundEdge = false;
+    while (true)
+    {
+        ++startFillX;
+        if (!foundEdge && result[startFillY][startFillX])
+        {
+            // We found the outline edge. Keep looking
+            // until we find an inside point that is
+            // false;
+            foundEdge = true;
+        }
+        else if (foundEdge && !result[startFillY][startFillX])
+        {
+            // Stop looking for an inside point only when
+            // we are sure it really is inside. Check the
+            // point against the known outside points to
+            // be sure.
+            int outsideY = startFillY - outsideFillMinY;
+            if (!outsideResult[outsideY][startFillX])
+            {
+                break;
+            }
+        }
+    }
+    floodFill (
+        startFillX,
+        startFillY,
+        0,
+        0,
+        width - 1,
+        height - 1,
+        result);
+
+    fileName = "./mask";
+    fileName += std::to_string(seed);
+    fileName += ".ppm";
+    std::ofstream ofs2;
+    ofs2.open(fileName, std::ios::out | std::ios::binary | std::ios::trunc);
+    ofs2 << "P6\n" << width << " " << height << "\n255\n";
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            unsigned char n = 0;
+            if (result[y][x])
+            {
+                n = 255;
+            }
+            ofs2 << n << n << n;
+        }
+    }
+    ofs2.close();
 
     return result;
 }
@@ -303,6 +385,18 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
 {
     Noise noise(seed);
     seed = noise.seed();
+
+    if (targetRadius < 25)
+    {
+        targetRadius = 25;
+    }
+
+    if (borderWidth == 0)
+    {
+        // We need at least 1 border to know for sure
+        // how to identify an inside point for filling.
+        borderWidth = 1;
+    }
 
     std::vector<std::vector<bool>> mask =
         createMask(seed, targetRadius, borderWidth, layers);

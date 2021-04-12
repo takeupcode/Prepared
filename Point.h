@@ -3,6 +3,7 @@
 
 #include "Hash.h"
 
+#include <cmath>
 #include <string>
 
 template <typename T>
@@ -23,6 +24,11 @@ public:
     constexpr Point1 (Point1 const & src)
     : x(src.x)
     { }
+
+    Point1 unit () const
+    {
+        return Point1(x >= 0 ? 1 : -1);
+    }
 
     bool operator == (Point1 const & rhs) const
     {
@@ -65,6 +71,13 @@ public:
     constexpr Point2 (Point2 const & src)
     : x(src.x), y(src.y)
     { }
+
+    Point2 unit () const
+    {
+        double length = std::sqrt(x * x + y * y);
+
+        return Point2(x / length, y / length);
+    }
 
     bool operator == (Point2 const & rhs) const
     {

@@ -15,7 +15,7 @@ void ComponentDrawable::draw (GameItem const * gameItem, Display * display) cons
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
 
     auto locateable = ComponentRegistry::find<ComponentLocateable>();
-    Point location = locateable->location(gameItem);
+    Point2i location = locateable->location(gameItem);
 
     char symbol = ComponentDrawable::symbol(gameItem);
 

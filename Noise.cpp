@@ -5,7 +5,9 @@
 #include "Math.h"
 #include "NoiseUtil.h"
 
+#include <chrono>
 #include <cmath>
+#include <ctime>
 #include <random>
 
 Noise::Noise (
@@ -22,7 +24,8 @@ Noise::Noise (
 {
     if (mSeed == 0)
     {
-        mSeed = std::random_device()();
+        mSeed = std::chrono::system_clock::now().
+            time_since_epoch().count();
     }
 }
 
@@ -32,7 +35,7 @@ int Noise::seed () const
 }
 
 double Noise::generate (double x, unsigned int layers,
-    unsigned int cycle) const
+    double cycle) const
 {
     std::mt19937 rng;
     rng.seed(mSeed);
@@ -49,7 +52,7 @@ double Noise::generate (double x, unsigned int layers,
         x = originalX * frequency + dist(rng);
         if (cycle != 0)
         {
-            x = std::fmod(x, static_cast<double>(cycle));
+            x = std::fmod(x, cycle);
         }
 
         // First, calculate the nearest whole grid coordinates next to each
@@ -69,8 +72,8 @@ double Noise::generate (double x, unsigned int layers,
         // Get hashes for each grid point using the grid coordinates. One dimension is
         // easier because we can combine the hash of the dimension and the hash of the
         // grid point because they're the same.
-        int hp0 = hash(ix0);
-        int hp1 = hash(ix1);
+        int hp0 = static_cast<int>(hashStart(ix0));
+        int hp1 = static_cast<int>(hashStart(ix1));
 
         // Define and calculate nodes based on the grid points.
         double a, b;
@@ -146,10 +149,10 @@ double Noise::generate (double x, double y, unsigned int layers) const
         double t = easeInOutPerlin(y0);
 
         // Get hashes for each grid point dimension.
-        int hx0 = hash(ix0);
-        int hx1 = hash(ix1);
-        int hy0 = hash(iy0);
-        int hy1 = hash(iy1);
+        int hx0 = static_cast<int>(hashStart(ix0));
+        int hx1 = static_cast<int>(hashStart(ix1));
+        int hy0 = static_cast<int>(hashStart(iy0));
+        int hy1 = static_cast<int>(hashStart(iy1));
 
         // Get hashes for each grid point using the grid coordinates.
         int hp00 = hx0 + hy0;

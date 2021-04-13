@@ -3,188 +3,274 @@
 #include "Lerp.h"
 #include "Math.h"
 #include "Noise.h"
+#include "Point.h"
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <stack>
+#include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
-void calculateQuadrantOutline (
+double getNoiseRadius (
     Noise const & noise,
-    double targetRadius,
+    unsigned int targetRadius,
     unsigned int layers,
-    std::vector<std::vector<bool>> & quadrant,
-    double startingDegrees,
-    bool anglesIncreaseFromStart,
-    int & xMax,
-    int & yMax
-    )
+    double degrees)
 {
-    const int cycleDivisor = 40;
+    double const cycleDivisor = 40.0;
     double noiseValue = 0;
-    int y = 0;
-    int x = 0;
+
+    noiseValue = static_cast<double>(targetRadius) + noise.generate(
+        degrees / cycleDivisor,
+        layers,
+        360.0 / cycleDivisor);
+
+    return noiseValue;
+}
+
+// Returns a path from the start + 1 to the end.
+std::vector<Point2i> getStraightPath (
+    Point2i const & start,
+    Point2i const & end)
+{
+    std::vector<Point2i> path;
+    if (start == end)
+    {
+        return path;
+    }
+
+    // Calculate path from the middle of the points given.
+    Point2d startDbl(0.5 + start.x, 0.5 + start.y);
+    Point2d endDbl(0.5 + end.x, 0.5 + end.y);
+
+    // Use DDA ray casting
+    Point2d direction = Point2d(
+        endDbl.x - startDbl.x,
+        endDbl.y - startDbl.y).unit();
+    Point2d unitSteps;
+    if (direction.x != 0.0 && direction.y != 0.0)
+    {
+        unitSteps.x = std::sqrt(
+            1 + (direction.y / direction.x) *
+            (direction.y / direction.x));
+        unitSteps.y = std::sqrt(
+            1 + (direction.x / direction.y) *
+            (direction.x / direction.y));
+    }
+    else
+    {
+        // Either x or y is zero. This is a straight
+        // line along an axis.
+        Point2i next = start;
+        while (true)
+        {
+            next.x += direction.x;
+            next.y += direction.y;
+
+            path.push_back(next);
+
+            if (next == end)
+            {
+                return path;;
+            }
+        }
+    }
+
+    Point2i steps;
+    Point2d rayLengths;
+    if (direction.x < 0)
+    {
+        steps.x = -1;
+        rayLengths.x = (startDbl.x - start.x) * unitSteps.x;
+    }
+    else
+    {
+        steps.x = 1;
+        rayLengths.x = ((start.x + 1) - startDbl.x) * unitSteps.x;
+    }
+
+    if (direction.y < 0)
+    {
+        steps.y = -1;
+        rayLengths.y = (startDbl.y - start.y) * unitSteps.y;
+    }
+    else
+    {
+        steps.y = 1;
+        rayLengths.y = ((start.y + 1) - startDbl.y) * unitSteps.y;
+    }
+
+    Point2i next = start;
     while (true)
     {
-        auto & newRow = quadrant.emplace_back();
-
-        if (y == 0)
+        if (rayLengths.x < rayLengths.y)
         {
-            noiseValue = targetRadius + noise.generate(
-                startingDegrees / cycleDivisor,
-                layers,
-                360 / cycleDivisor);
-
-            // The floor is just inside the outline.
-            x = dtoiflr(noiseValue);
-
-            // We'll assume that noise cannot be so deep that it
-            // crosses into other quadrants from a higher angle.
-            if (x < 0)
-            {
-                x = 0;
-            }
-
-            // Increment to get outside the outline.
-            ++x;
-            xMax = x;
-
-            std::fill_n(std::back_inserter(newRow), xMax + 1, true);
-            newRow[x] = false;
+            next.x += steps.x;
+            rayLengths.x += unitSteps.x;
         }
         else
         {
-            // We'll be done with this quadrant when we can go an
-            // entire row with all the points being outside the
-            // outline.
-            bool done = true;
-            std::fill_n(std::back_inserter(newRow), xMax + 1, true);
-
-            // If the last point is still inside the outline, then we
-            // need to start increasing the width. This will affect
-            // the higher rows by increasing xMax.
-            bool lastPointInside = false;
-
-            x = 0;
-            while (x <= xMax)
-            {
-                double angle = ptoa({x, y});
-                if (anglesIncreaseFromStart)
-                {
-                    angle = startingDegrees + angle;
-                }
-                else
-                {
-                    angle = startingDegrees - angle;
-                }
-                noiseValue = targetRadius + noise.generate(
-                    angle / cycleDivisor,
-                    layers,
-                    360 / cycleDivisor);
-                noiseValue *= noiseValue;
-
-                double pointDistanceSquared = x * x + y * y;
-                if (pointDistanceSquared > noiseValue)
-                {
-                    newRow[x] = false;
-                    lastPointInside = false;
-                }
-                else
-                {
-                    done = false;
-                    lastPointInside = true;
-                }
-
-                ++x;
-            }
-
-            if (lastPointInside)
-            {
-                while (true)
-                {
-                    ++xMax;
-                    newRow.push_back(true);
-
-                    double angle = ptoa({x, y});
-                    if (anglesIncreaseFromStart)
-                    {
-                        angle = startingDegrees + angle;
-                    }
-                    else
-                    {
-                        angle = startingDegrees - angle;
-                    }
-                    noiseValue = targetRadius + noise.generate(
-                        angle / cycleDivisor,
-                        layers,
-                        360 / cycleDivisor);
-                    noiseValue *= noiseValue;
-
-                    double pointDistanceSquared = x * x + y * y;
-                    if (pointDistanceSquared > noiseValue)
-                    {
-                        newRow[x] = false;
-                        break;
-                    }
-
-                    ++x;
-                }
-            }
-
-            if (done)
-            {
-                break;
-            }
+            next.y += steps.y;
+            rayLengths.y += unitSteps.y;
         }
-        ++y;
+
+        path.push_back(next);
+
+        if (next == end)
+        {
+            break;
+        }
     }
 
-    yMax = y;
+    return path;
 }
 
-std::vector<std::vector<bool>> createOutline (int seed)
+std::vector<Point2i> getPath (
+    Noise const & noise,
+    unsigned int targetRadius,
+    unsigned int layers)
+{
+    std::vector<Point2i> path;
+
+    double degrees = 0.0;
+    auto radius = getNoiseRadius (
+        noise,
+        targetRadius,
+        layers,
+        degrees);
+    auto point = artop(degrees, radius);
+    path.push_back(point);
+
+    for (degrees = 1.0; degrees <= 360.0; ++degrees)
+    {
+        radius = getNoiseRadius (
+            noise,
+            targetRadius,
+            layers,
+            degrees);
+        point = artop(degrees, radius);
+
+        auto points = getStraightPath(
+            path.back(),
+            point);
+
+        for (auto const & next: points)
+        {
+            path.push_back(next);
+        }
+    }
+
+    return path;
+}
+
+void adjustMinMaxValues (
+    Point2i const & point,
+    int & minX,
+    int & maxX,
+    int & minY,
+    int & maxY)
+{
+    if (point.x < minX)
+    {
+        minX = point.x;
+    }
+    if (point.x > maxX)
+    {
+        maxX = point.x;
+    }
+    if (point.y < minY)
+    {
+        minY = point.y;
+    }
+    if (point.y > maxY)
+    {
+        maxY = point.y;
+    }
+}
+
+void floodFill (
+    int startX,
+    int startY,
+    int minX,
+    int minY,
+    int maxX,
+    int maxY,
+    std::vector<std::vector<bool>> & result)
+{
+    std::stack<Point2i> fillPoints;
+    fillPoints.emplace(startX, startY);
+    result[startY][startX] = true;
+    while (!fillPoints.empty())
+    {
+        Point2i point = fillPoints.top();
+        fillPoints.pop();
+
+        if (point.y != minY && !result[point.y - 1][point.x])
+        {
+            fillPoints.emplace(point.x, point.y - 1);
+            result[point.y - 1][point.x] = true;
+        }
+        if (point.y != maxY && !result[point.y + 1][point.x])
+        {
+            fillPoints.emplace(point.x, point.y + 1);
+            result[point.y + 1][point.x] = true;
+        }
+        if (point.x != minX && !result[point.y][point.x - 1])
+        {
+            fillPoints.emplace(point.x - 1, point.y);
+            result[point.y][point.x - 1] = true;
+        }
+        if (point.x != maxX && !result[point.y][point.x + 1])
+        {
+            fillPoints.emplace(point.x + 1, point.y);
+            result[point.y][point.x + 1] = true;
+        }
+    }
+}
+
+std::vector<std::vector<bool>> createMask (
+    int seed,
+    unsigned int targetRadius,
+    unsigned int borderWidth,
+    unsigned int layers)
 {
     Noise noise(seed, 1, 4);
-    seed = noise.seed();
 
-    const double targetRadius = 25;
-    std::vector<std::vector<bool>> quadrant1;
-    std::vector<std::vector<bool>> quadrant2;
-    std::vector<std::vector<bool>> quadrant3;
-    std::vector<std::vector<bool>> quadrant4;
-    unsigned int layers = 2;
+    int minX = std::numeric_limits<int>::max();
+    int maxX = std::numeric_limits<int>::min();
+    int minY = std::numeric_limits<int>::max();
+    int maxY = std::numeric_limits<int>::min();
 
-    int q1xMax = 0;
-    int q1yMax = 0;
-    int q2xMax = 0;
-    int q2yMax = 0;
-    int q3xMax = 0;
-    int q3yMax = 0;
-    int q4xMax = 0;
-    int q4yMax = 0;
+    auto path = getPath (
+        noise,
+        targetRadius,
+        layers);
 
-    calculateQuadrantOutline(noise, targetRadius, layers,
-        quadrant1, 0.0, true, q1xMax, q1yMax);
+    for (auto const & point: path)
+    {
+        adjustMinMaxValues(point, minX, maxX, minY, maxY);
+    }
 
-    calculateQuadrantOutline(noise, targetRadius, layers,
-        quadrant2, 180.0, false, q2xMax, q2yMax);
-
-    calculateQuadrantOutline(noise, targetRadius, layers,
-        quadrant3, 180.0, true, q3xMax, q3yMax);
-
-    calculateQuadrantOutline(noise, targetRadius, layers,
-        quadrant4, 360.0, false, q4xMax, q4yMax);
-
-    int leftxMax = std::max(q2xMax, q3xMax);
-    int rightxMax = std::max(q1xMax, q4xMax);
-    int topyMax = std::max(q1yMax, q2yMax);
-    int bottomyMax = std::max(q3yMax, q4yMax);
-
-    int width = leftxMax + rightxMax + 1;
-    int height = topyMax + bottomyMax + 1;
+    int width = maxX - minX + 1 + borderWidth * 2;
+    int height = maxY - minY + 1 + borderWidth * 2;
 
     std::vector<std::vector<bool>> result;
+    for (int y = 0; y < height; ++y)
+    {
+        auto & resultRow = result.emplace_back();
+        resultRow = std::vector<bool>(width);
+    }
+
+    for (auto const & point: path)
+    {
+        int resultY = point.y - minY + borderWidth;
+        int resultX = point.x - minX + borderWidth;
+        result[resultY][resultX] = true;
+    }
 
     std::string fileName = "./outline";
     fileName += std::to_string(seed);
@@ -192,164 +278,138 @@ std::vector<std::vector<bool>> createOutline (int seed)
     std::ofstream ofs;
     ofs.open(fileName, std::ios::out | std::ios::binary | std::ios::trunc);
     ofs << "P6\n" << width << " " << height << "\n255\n";
-
-    // Q1 and Q2 both print the high y values first.
-    for (int y = topyMax; y >= 0; --y)
+    for (int y = 0; y < height; ++y)
     {
-        auto & resultRow = result.emplace_back();
-
-        // Q2 x values are backwards. We print the high x values first.
-        if (y > q2yMax)
+        for (int x = 0; x < width; ++x)
         {
-            for (int x = leftxMax; x >= 0; --x)
+            unsigned char n = 0;
+            if (result[y][x])
             {
-                unsigned char n = 0;
-                ofs << n << n << n;
-
-                resultRow.push_back(false);
+                n = 255;
             }
-        }
-        else
-        {
-            for (int x = leftxMax; x >= 0; --x)
-            {
-                bool resultValue = false;
-                unsigned char n = 0;
-                // Some rows could have fewer values.
-                if (quadrant2[y].size() > static_cast<unsigned int>(x) &&
-                    quadrant2[y][x])
-                {
-                    n = 255;
-                    resultValue = true;
-                }
-                ofs << n << n << n;
-
-                resultRow.push_back(resultValue);
-            }
-        }
-
-        // Q1 x values are correct. We print the low x values first.
-        // But we skip x == 0 because we already printed it from Q2.
-        // Q1 and Q2 overlap when x == 0.
-        if (y > q1yMax)
-        {
-            for (int x = 1; x <= rightxMax; ++x)
-            {
-                unsigned char n = 0;
-                ofs << n << n << n;
-
-                resultRow.push_back(false);
-            }
-        }
-        else
-        {
-            for (int x = 1; x <= rightxMax; ++x)
-            {
-                bool resultValue = false;
-                unsigned char n = 0;
-                // Some rows could have fewer values.
-                if (quadrant1[y].size() > static_cast<unsigned int>(x) &&
-                    quadrant1[y][x])
-                {
-                    n = 255;
-                    resultValue = true;
-                }
-                ofs << n << n << n;
-
-                resultRow.push_back(resultValue);
-            }
+            ofs << n << n << n;
         }
     }
-
-    // Q3 and Q4 both print the low y values first. But we skip
-    // the points when y == 0 because Q3 and Q4 overlap with Q1
-    // and Q2 when y == 0.
-    for (int y = 1; y <= bottomyMax; ++y)
-    {
-        auto & resultRow = result.emplace_back();
-
-        // Q3 x values are backwards. We print the high x values first.
-        if (y > q3yMax)
-        {
-            for (int x = leftxMax; x >= 0; --x)
-            {
-                unsigned char n = 0;
-                ofs << n << n << n;
-
-                resultRow.push_back(false);
-            }
-        }
-        else
-        {
-            for (int x = leftxMax; x >= 0; --x)
-            {
-                bool resultValue = false;
-                unsigned char n = 0;
-                // Some rows could have fewer values.
-                if (quadrant3[y].size() > static_cast<unsigned int>(x) &&
-                    quadrant3[y][x])
-                {
-                    n = 255;
-                    resultValue = true;
-                }
-                ofs << n << n << n;
-
-                resultRow.push_back(resultValue);
-            }
-        }
-
-        // Q4 x values are correct. We print the low x values first.
-        // But we skip x == 0 because we already printed it from Q3.
-        // Q3 and Q4 overlap when x == 0.
-        if (y > q4yMax)
-        {
-            for (int x = 1; x <= rightxMax; ++x)
-            {
-                unsigned char n = 0;
-                ofs << n << n << n;
-
-                resultRow.push_back(false);
-            }
-        }
-        else
-        {
-            for (int x = 1; x <= rightxMax; ++x)
-            {
-                bool resultValue = false;
-                unsigned char n = 0;
-                // Some rows could have fewer values.
-                if (quadrant4[y].size() > static_cast<unsigned int>(x) &&
-                    quadrant4[y][x])
-                {
-                    n = 255;
-                    resultValue = true;
-                }
-                ofs << n << n << n;
-
-                resultRow.push_back(resultValue);
-            }
-        }
-    }
-
     ofs.close();
+
+    // Flood fill the outlined bools from a known point
+    // inside the outline. This is not as easy as it seems.
+    // The only points we know for certain are the outside
+    // and the border points. We can first flood fill a
+    // portion of the outside. Don't need to do the entire
+    // border. And then use those identified outside points
+    // to make sure that we don't accidentally select an
+    // outside point when trying to flood fill the inside.
+    int outsideStartFillY = height / 2;
+    int outsideFillMargin = 5;
+    int outsideFillMinY = outsideStartFillY - outsideFillMargin;
+    std::vector<std::vector<bool>> outsideResult;
+    for (int y = 0; y < (outsideFillMargin * 2 + 1); ++y)
+    {
+        auto & outsideRow = outsideResult.emplace_back();
+        outsideRow = result[outsideFillMinY + y];
+    }
+    floodFill (
+        0,
+        0,
+        0,
+        0,
+        width - 1,
+        outsideFillMargin * 2,
+        outsideResult);
+
+    std::stack<Point2i> fillPoints;
+    int startFillY = height / 2;
+    int startFillX = -1;
+    bool foundEdge = false;
+    while (true)
+    {
+        ++startFillX;
+        if (!foundEdge && result[startFillY][startFillX])
+        {
+            // We found the outline edge. Keep looking
+            // until we find an inside point that is
+            // false;
+            foundEdge = true;
+        }
+        else if (foundEdge && !result[startFillY][startFillX])
+        {
+            // Stop looking for an inside point only when
+            // we are sure it really is inside. Check the
+            // point against the known outside points to
+            // be sure.
+            int outsideY = startFillY - outsideFillMinY;
+            if (!outsideResult[outsideY][startFillX])
+            {
+                break;
+            }
+        }
+    }
+    floodFill (
+        startFillX,
+        startFillY,
+        0,
+        0,
+        width - 1,
+        height - 1,
+        result);
+
+    fileName = "./mask";
+    fileName += std::to_string(seed);
+    fileName += ".ppm";
+    std::ofstream ofs2;
+    ofs2.open(fileName, std::ios::out | std::ios::binary | std::ios::trunc);
+    ofs2 << "P6\n" << width << " " << height << "\n255\n";
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            unsigned char n = 0;
+            if (result[y][x])
+            {
+                n = 255;
+            }
+            ofs2 << n << n << n;
+        }
+    }
+    ofs2.close();
+
     return result;
 }
 
-std::vector<std::vector<GameMap::Terrain>> GameMap::create ()
+std::vector<std::vector<GameMap::Terrain>> GameMap::create (
+    int seed,
+    unsigned int targetRadius,
+    unsigned int borderWidth,
+    unsigned int layers)
 {
-    Noise noise;
-    int seed = noise.seed();
+    Noise noise(seed);
+    seed = noise.seed();
 
-    std::vector<std::vector<bool>> outline = createOutline (seed);
+    if (targetRadius < 25)
+    {
+        targetRadius = 25;
+    }
 
-    const unsigned int height = outline.size();
+    if (borderWidth == 0)
+    {
+        // We need at least 1 border to know for sure
+        // how to identify an inside point for filling.
+        borderWidth = 1;
+    }
 
-    // All the rows in the outline are the same width. Use the
+    std::vector<std::vector<bool>> mask =
+        createMask(seed, targetRadius, borderWidth, layers);
+
+    const unsigned int height =
+        static_cast<unsigned int>(mask.size());
+
+    // All the rows in the mask are the same width. Use the
     // first to get the width.
-    const unsigned int width = outline[0].size();
+    const unsigned int width =
+        static_cast<unsigned int>(mask[0].size());
 
     double *noiseMap = new double[width * height];
-    unsigned int layers = 1;
 
     double min = std::numeric_limits<double>::max();
     double max = std::numeric_limits<double>::min();
@@ -367,7 +427,7 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create ()
             {
                 min = noiseValue;
             }
-            else if (noiseValue > max)
+            if (noiseValue > max)
             {
                 max = noiseValue;
             }
@@ -376,10 +436,6 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create ()
 
     double minMaxShift = -min;
     double minMaxRange = max - min;
-    if (minMaxRange == 0)
-    {
-        minMaxRange = 1;
-    }
 
     std::string fileName = "./noise";
     fileName += std::to_string(seed);
@@ -401,7 +457,7 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create ()
                 (noiseMap[i] + minMaxShift) / minMaxRange * 255
                 );
 
-            if (!outline[y][x])
+            if (!mask[y][x])
             {
                 n = 0;
             }
@@ -420,7 +476,7 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create ()
                     << static_cast<unsigned char>(100)
                     << static_cast<unsigned char>(0);
 
-                resultRow.push_back(Terrain::Trees);
+                resultRow.push_back(Terrain::Tree);
             }
             else if (n >= 75)
             {

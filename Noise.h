@@ -14,7 +14,7 @@ public:
     int seed () const;
 
     double generate (double x, unsigned int layers = 1,
-        unsigned int cycle = 0) const;
+        double cycle = 0.0) const;
 
     double generate (double x, double y, unsigned int layers = 1) const;
 

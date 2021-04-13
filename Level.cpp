@@ -77,7 +77,7 @@ void Level::generate ()
                     break;
                 }
 
-                case GameMap::Terrain::Trees:
+                case GameMap::Terrain::Tree:
                 {
                     GameItem dirtTreeInst(dirtTile->id());
                     dirtTreeInst.addComponent(identifiable->id());
@@ -125,7 +125,7 @@ void Level::generate ()
 
     auto consumable = ComponentRegistry::find<ComponentConsumable>();
 
-    Point location(0, 0);
+    Point2i location(0, 0);
     int index;
 
     auto registeredGameItem = GameItemRegistry::find("gold");
@@ -209,9 +209,9 @@ void Level::draw () const
     }
 }
 
-std::vector<Point> Level::entryLocations (unsigned int count) const
+std::vector<Point2i> Level::entryLocations (unsigned int count) const
 {
-    std::vector<Point> locations;
+    std::vector<Point2i> locations;
 
     for (unsigned int i = 0; i < count; ++i)
     {
@@ -244,9 +244,9 @@ void Level::spawnCreatures () const
     }
 }
 
-Point Level::calculateMoveLocation (
-    Point const & current,
-    Point const & proposed,
+Point2i Level::calculateMoveLocation (
+    Point2i const & current,
+    Point2i const & proposed,
     int moveLayerId) const
 {
     if (proposed.x < 0 ||
@@ -286,7 +286,7 @@ Point Level::calculateMoveLocation (
     return proposed;
 }
 
-GameItem * Level::findTile (Point const & location)
+GameItem * Level::findTile (Point2i const & location)
 {
     if (location.x < 0 ||
         static_cast<unsigned int>(location.x) >= mWidth ||
@@ -312,7 +312,7 @@ GameItem * Level::findTile (Point const & location)
     return &baseTile;
 }
 
-GameItem const * Level::findTile (Point const & location) const
+GameItem const * Level::findTile (Point2i const & location) const
 {
     if (location.x < 0 ||
         static_cast<unsigned int>(location.x) >= mWidth ||
@@ -393,7 +393,7 @@ void Level::setCollidingLayerIds (
     mCollidingLayerIds[layerId] = collidingLayers;
 }
 
-Point Level::findRandomLocationOnLand () const
+Point2i Level::findRandomLocationOnLand () const
 {
     int minSize = std::min(mWidth, mHeight);
 
@@ -404,7 +404,7 @@ Point Level::findRandomLocationOnLand () const
         1,
         minSize - 2); // Allow at least a pixel on either side.
 
-    Point result(dist(rng), dist(rng));
+    Point2i result(dist(rng), dist(rng));
 
     auto layer = ComponentRegistry::find<ComponentLayer>();
     int landLayerId = 0;

@@ -26,12 +26,12 @@ public:
 
     void setMapSymbol (
         std::string const & symbol,
-        Point const & location,
+        Point2i const & location,
         bool important = false);
 
-    Point mapScrollOrigin ();
+    Point2i mapScrollOrigin ();
     void ensureVisibleInMap (
-        Point const & location,
+        Point2i const & location,
         int mapWidth,
         int mapHeight);
 
@@ -50,8 +50,8 @@ private:
     std::vector<std::vector<std::string>> mMapOutput;
     std::vector<std::string> mMapOutputLines;
     std::vector<std::string> mDialogOutputLines;
-    std::vector<Point> mImportantLocations;
-    Point mMapScrollOrigin;
+    std::vector<Point2i> mImportantLocations;
+    Point2i mMapScrollOrigin;
 };
 
 #endif // DISPLAY_H

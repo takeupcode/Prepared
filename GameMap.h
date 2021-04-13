@@ -18,7 +18,7 @@ public:
 
     static std::vector<std::vector<Terrain>> create (
         int seed = 0,
-        unsigned int targetRadius = 25,
+        unsigned int targetRadius = 100,
         unsigned int borderWidth = 5,
         unsigned int layers = 2);
 };

@@ -636,7 +636,7 @@ void Game::registerItems ()
     gameItem->addComponent(drawable->id());
     drawable->setSymbol(gameItem, 't');
     gameItem->addComponent(layer->id());
-    layer->setLayerId(gameItem, solidsLayerId);
+    layer->setLayerId(gameItem, landLayerId);
     gameItem->addComponent(color->id());
     color->setAttributesBasic(gameItem,
         {ASCIIGraphic::ForeGreen});
@@ -656,7 +656,7 @@ void Game::registerItems ()
     gameItem->addComponent(drawable->id());
     drawable->setSymbol(gameItem, 'b');
     gameItem->addComponent(layer->id());
-    layer->setLayerId(gameItem, solidsLayerId);
+    layer->setLayerId(gameItem, landLayerId);
     gameItem->addComponent(color->id());
 
     // Actors

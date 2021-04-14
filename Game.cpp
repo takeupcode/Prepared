@@ -36,8 +36,8 @@ Game::Game(
 {
     if (mSeed == 0)
     {
-        mSeed = std::chrono::system_clock::now().
-            time_since_epoch().count();
+        mSeed = static_cast<int>(std::chrono::system_clock::now().
+            time_since_epoch().count());
     }
 
     mRNG.seed(mSeed);
@@ -341,7 +341,8 @@ void Game::placeCharacters ()
         return;
     }
 
-    auto locations = mLevel->entryLocations(mCharacters.size());
+    auto locations = mLevel->entryLocations(
+        static_cast<unsigned int>(mCharacters.size()));
 
     auto location = ComponentRegistry::find<ComponentLocation>();
 

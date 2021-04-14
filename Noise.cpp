@@ -24,8 +24,8 @@ Noise::Noise (
 {
     if (mSeed == 0)
     {
-        mSeed = std::chrono::system_clock::now().
-            time_since_epoch().count();
+        mSeed = static_cast<int>(std::chrono::system_clock::now().
+            time_since_epoch().count());
     }
 }
 

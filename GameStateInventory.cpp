@@ -373,7 +373,7 @@ void GameStateInventory::handleTransfer (
     std::vector<DisplayGroup> & source,
     std::vector<DisplayGroup> & destination) const
 {
-    unsigned int listSize = source.size();
+    unsigned int listSize = static_cast<unsigned int>(source.size());
     if (listSize == 0)
     {
         return;

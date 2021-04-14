@@ -5,7 +5,7 @@
 #include "ComponentHealth.h"
 #include "ComponentIdentifiable.h"
 #include "ComponentLayer.h"
-#include "ComponentLocateable.h"
+#include "ComponentLocation.h"
 #include "ComponentRegistry.h"
 #include "Game.h"
 #include "GameItemRegistry.h"
@@ -127,7 +127,7 @@ GameItem GameStateStarting::createCharacter (char symbol) const
     auto health = ComponentRegistry::find<ComponentHealth>();
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     auto layer = ComponentRegistry::find<ComponentLayer>();
-    auto locateable = ComponentRegistry::find<ComponentLocateable>();
+    auto location = ComponentRegistry::find<ComponentLocation>();
 
     auto registeredCharacter = GameItemRegistry::find("character");
     GameItem character(registeredCharacter->id());
@@ -154,7 +154,7 @@ GameItem GameStateStarting::createCharacter (char symbol) const
     character.addComponent(layer->id());
     layer->setLayerId(&character, playersLayerId);
 
-    character.addComponent(locateable->id());
+    character.addComponent(location->id());
     // The actual location will be set later.
 
     return character;

@@ -3,7 +3,7 @@
 #include "ComponentDrawable.h"
 #include "ComponentGroupable.h"
 #include "ComponentIdentifiable.h"
-#include "ComponentLocateable.h"
+#include "ComponentLocation.h"
 #include "ComponentRegistry.h"
 #include "Game.h"
 #include "GameItem.h"
@@ -34,12 +34,12 @@ GameStateInventory::GameStateInventory (
 
     auto level = mGame->level();
 
-    auto locateable = ComponentRegistry::find<ComponentLocateable>();
-    Point2i location = locateable->location(mCharacter);
+    auto location = ComponentRegistry::find<ComponentLocation>();
+    Point2i point = location->location(mCharacter);
 
     if (level != nullptr)
     {
-        mTile = level->findTile(location);
+        mTile = level->findTile(point);
         if (mTile != nullptr)
         {
             addToDisplayGroupCollection (

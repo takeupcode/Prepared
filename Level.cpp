@@ -6,7 +6,7 @@
 #include "ComponentDrawable.h"
 #include "ComponentIdentifiable.h"
 #include "ComponentLayer.h"
-#include "ComponentLocateable.h"
+#include "ComponentLocation.h"
 #include "ComponentRegistry.h"
 #include "Display.h"
 #include "Game.h"
@@ -231,14 +231,14 @@ std::vector<Point2i> Level::entryLocations (unsigned int count) const
 void Level::spawnCreatures () const
 {
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-    auto locateable = ComponentRegistry::find<ComponentLocateable>();
+    auto location = ComponentRegistry::find<ComponentLocation>();
 
     for (int i = 0; i < 10; ++i)
     {
         auto creature = createRat();
 
-        auto location = findRandomLocationOnLand();
-        locateable->setLocation(&creature, location);
+        auto point = findRandomLocationOnLand();
+        location->setLocation(&creature, point);
 
         mGame->addEvent(CreatureSpawned {identifiable->instanceId(&creature)});
     }
@@ -343,7 +343,7 @@ GameItem Level::createRat () const
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     auto layer = ComponentRegistry::find<ComponentLayer>();
-    auto locateable = ComponentRegistry::find<ComponentLocateable>();
+    auto location = ComponentRegistry::find<ComponentLocation>();
 
     auto registeredItem = GameItemRegistry::find("rat");
     GameItem rat(registeredItem->id());
@@ -365,7 +365,7 @@ GameItem Level::createRat () const
     rat.addComponent(layer->id());
     layer->setLayerId(&rat, animalsLayerId);
 
-    rat.addComponent(locateable->id());
+    rat.addComponent(location->id());
     // The actual location will be set later.
 
     return rat;

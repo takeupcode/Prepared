@@ -12,7 +12,7 @@
 #include "ComponentFindable.h"
 #include "ComponentHealth.h"
 #include "ComponentIdentifiable.h"
-#include "ComponentLocateable.h"
+#include "ComponentLocation.h"
 #include "ComponentRegistry.h"
 #include "ComponentTradeable.h"
 #include "Game.h"
@@ -143,9 +143,9 @@ void GameStateExploring::operator () (
     display->dialogBuffer()
         << "Character " << symbol << " moved.";
 
-    auto locateable = ComponentRegistry::find<ComponentLocateable>();
+    auto location = ComponentRegistry::find<ComponentLocation>();
     auto tile = mGame->level()->findTile(
-        locateable->location(character));
+        location->location(character));
     if (tile != nullptr)
     {
         auto findable = ComponentRegistry::find<ComponentFindable>();

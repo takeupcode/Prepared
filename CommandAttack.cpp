@@ -1,7 +1,7 @@
 #include "CommandAttack.h"
 
 #include "ComponentHealth.h"
-#include "ComponentLocateable.h"
+#include "ComponentLocation.h"
 #include "ComponentRegistry.h"
 #include "Direction.h"
 #include "Game.h"
@@ -127,17 +127,17 @@ GameState::StateAction CommandAttack::execute (Game * game) const
         return GameState::Keep {};
     }
 
-    auto locateable = ComponentRegistry::find<ComponentLocateable>();
+    auto location = ComponentRegistry::find<ComponentLocation>();
     auto attacks = attackLocations(
-        locateable->location(character),
-        locateable->direction(character));
+        location->location(character),
+        location->direction(character));
 
     auto health = ComponentRegistry::find<ComponentHealth>();
     for (auto & creature: game->creatures())
     {
         for (auto const & attack: attacks)
         {
-            if (locateable->location(&creature) == attack)
+            if (location->location(&creature) == attack)
             {
                 if (game->randomPercent() > 80)
                 {

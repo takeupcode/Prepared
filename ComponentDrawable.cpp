@@ -2,7 +2,7 @@
 
 #include "ASCII.h"
 #include "ComponentIdentifiable.h"
-#include "ComponentLocateable.h"
+#include "ComponentLocation.h"
 #include "ComponentRegistry.h"
 #include "Display.h"
 #include "Game.h"
@@ -14,8 +14,8 @@ void ComponentDrawable::draw (GameItem const * gameItem, Display * display) cons
 {
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
 
-    auto locateable = ComponentRegistry::find<ComponentLocateable>();
-    Point2i location = locateable->location(gameItem);
+    auto location = ComponentRegistry::find<ComponentLocation>();
+    Point2i point = location->location(gameItem);
 
     char symbol = ComponentDrawable::symbol(gameItem);
 
@@ -38,7 +38,7 @@ void ComponentDrawable::draw (GameItem const * gameItem, Display * display) cons
     std::string symbolStr =
         ASCIIEscape::graphicSequence({ASCIIGraphic::ForeRed});
     symbolStr += isImportant ? '*' : symbol;
-    display->setMapSymbol(symbolStr, location, isImportant);
+    display->setMapSymbol(symbolStr, point, isImportant);
 }
 
 char ComponentDrawable::symbol (

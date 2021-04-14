@@ -12,7 +12,7 @@
 #include "ComponentHealth.h"
 #include "ComponentIdentifiable.h"
 #include "ComponentLayer.h"
-#include "ComponentLocateable.h"
+#include "ComponentLocation.h"
 #include "ComponentPhysical.h"
 #include "ComponentRegistry.h"
 #include "ComponentTradeable.h"
@@ -343,12 +343,12 @@ void Game::placeCharacters ()
 
     auto locations = mLevel->entryLocations(mCharacters.size());
 
-    auto locateable = ComponentRegistry::find<ComponentLocateable>();
+    auto location = ComponentRegistry::find<ComponentLocation>();
 
     unsigned int i = 0;
     for (auto & character: mCharacters)
     {
-        locateable->setLocation(&character, locations[i]);
+        location->setLocation(&character, locations[i]);
         ++i;
     }
 
@@ -481,7 +481,7 @@ void Game::registerComponents ()
     ComponentHealth health;
     ComponentIdentifiable identifiable;
     ComponentLayer layer;
-    ComponentLocateable locateable;
+    ComponentLocation location;
     ComponentPhysical physical;
     ComponentTradeable tradeable;
 
@@ -496,7 +496,7 @@ void Game::registerComponents ()
     ComponentRegistry::add(health);
     ComponentRegistry::add(identifiable);
     ComponentRegistry::add(layer);
-    ComponentRegistry::add(locateable);
+    ComponentRegistry::add(location);
     ComponentRegistry::add(physical);
     ComponentRegistry::add(tradeable);
 }
@@ -534,7 +534,6 @@ void Game::registerItems ()
     gameItem->addComponent(identifiable->id());
     identifiable->setName(gameItem, "solids");
     addLayer(gameItem->id());
-    int solidsLayerId = gameItem->id();
 
     gameItem = GameItemRegistry::add("player characters");
     gameItem->addComponent(identifiable->id());

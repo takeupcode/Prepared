@@ -1,16 +1,16 @@
-#ifndef COMPONENTLOCATEABLE_H
-#define COMPONENTLOCATEABLE_H
+#ifndef COMPONENTLOCATION_H
+#define COMPONENTLOCATION_H
 
 #include "Component.h"
 #include "Direction.h"
 #include "Point.h"
 
-class ComponentLocateable : public Component
+class ComponentLocation : public Component
 {
 public:
     static std::string const PermanentId;
 
-    ComponentLocateable () = default;
+    ComponentLocation () = default;
 
     std::string permanentId () const override
     {
@@ -34,11 +34,11 @@ public:
         Direction value);
 
 private:
-    ComponentLocateable (int id)
+    ComponentLocation (int id)
     : Component(id)
     { }
 
     std::unique_ptr<Component> clone (int id) const override;
 };
 
-#endif // COMPONENTLOCATEABLE_H
+#endif // COMPONENTLOCATION_H

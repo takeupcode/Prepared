@@ -3,7 +3,7 @@
 #include "ASCII.h"
 #include "ComponentDrawable.h"
 #include "ComponentHealth.h"
-#include "ComponentLocateable.h"
+#include "ComponentLocation.h"
 #include "ComponentRegistry.h"
 #include "Game.h"
 
@@ -60,11 +60,11 @@ void Display::update ()
     }
     mGame->output() << std::endl;
 
-    auto locateable = ComponentRegistry::find<ComponentLocateable>();
+    auto location = ComponentRegistry::find<ComponentLocation>();
     mGame->output() << "Direction ";
     for (auto const & character: mGame->characters())
     {
-        char symbol = directionSymbol(locateable->direction(&character));
+        char symbol = directionSymbol(location->direction(&character));
         mGame->output() << std::setw(5) << symbol;
     }
     mGame->output() << std::endl;

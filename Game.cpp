@@ -661,10 +661,12 @@ void Game::registerItems ()
 
     // Actors
     gameItem = GameItemRegistry::add("character");
+    gameItem->addTag("pc");
     gameItem->addComponent(identifiable->id());
     identifiable->setName(gameItem, "character");
 
     gameItem = GameItemRegistry::add("rat");
+    gameItem->addTag("npc");
     gameItem->addComponent(identifiable->id());
     identifiable->setName(gameItem, "rat");
 

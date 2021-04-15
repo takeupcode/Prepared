@@ -35,6 +35,16 @@ bool GameItem::removeComponent (int componentId)
     return false;
 }
 
+bool GameItem::addTag (std::string const & tag)
+{
+    return mTags.insert(tag).second;
+}
+
+bool GameItem::removeTag (std::string const & tag)
+{
+    return mTags.erase(tag) == 1;
+}
+
 void GameItem::draw (Display * display) const
 {
     for (int i = 0; i < MaxComponentCount; ++i)

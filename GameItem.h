@@ -4,6 +4,7 @@
 #include "GameItemRegistry.h"
 
 #include <bitset>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <variant>
@@ -66,6 +67,25 @@ public:
         return mItems;
     }
 
+    bool hasTag (std::string const & tag) const
+    {
+        if (mTags.find(tag) != mTags.end())
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    bool addTag (std::string const & tag);
+
+    bool removeTag (std::string const & tag);
+
+    std::vector<std::string> tags () const
+    {
+        return std::vector<std::string>(mTags.begin(), mTags.end());
+    }
+
     void draw (Display * display) const;
 
 private:
@@ -97,6 +117,8 @@ private:
     int mId;
     std::bitset<MaxComponentCount> mComponents;
     std::vector<Property> mProperties;
+    std::set<std::string> mTags;
+
     std::vector<GameItem> mItems;
 };
 

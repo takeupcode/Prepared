@@ -18,13 +18,10 @@ public:
     void draw () override;
 
     void operator () (
-        CharacterMoved const & characterMoved) const;
+        GameItemMoved const & moved) const;
 
     void operator () (
-        CharacterHit const & characterHit) const;
-
-    void operator () (
-        CreatureHit const & creatureHit) const;
+        GameItemDamaged const & damaged) const;
 
     template <typename EventVariant>
     void operator () (EventVariant const &) const

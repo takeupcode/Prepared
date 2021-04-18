@@ -70,7 +70,7 @@ GameState::StateAction CommandTurn::execute (Game * game) const
         return GameState::Keep {};
     }
 
-    auto character = game->findCharacter(characterId.value());
+    auto character = game->findItem(characterId.value());
     if (character == nullptr)
     {
         return GameState::Keep {};

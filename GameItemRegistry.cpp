@@ -12,7 +12,9 @@ GameItem * GameItemRegistry::add (std::string const & permanentId)
     if (gameItem == nullptr)
     {
         mGameItemIds.try_emplace(permanentId, mNextId);
-        mGameItems.try_emplace(mNextId, std::make_unique<GameItem>(mNextId));
+        mGameItems.try_emplace(
+            mNextId,
+            std::make_unique<GameItem>(mNextId, 0));
 
         gameItem = find(mNextId);
         ++mNextId;

@@ -1,43 +1,77 @@
 #ifndef GAMEEVENT_H
 #define GAMEEVENT_H
 
+#include "Direction.h"
 #include "Point.h"
 
 #include <variant>
 
-struct CharacterSpawned
+struct ComponentAdded
 {
-    int characterId;
+    int itemInstanceId;
+    int compId;
 };
 
-struct CreatureSpawned
+struct ComponentRemoved
 {
-    int creatureId;
+    int itemInstanceId;
+    int compId;
 };
 
-struct CharacterMoved
+struct GameItemAttack
 {
-    int characterId;
+    int itemInstanceId;
 };
 
-struct CharacterHit
+struct GameItemControlDirection
 {
-    int characterId;
+    int itemInstanceId;
+    Direction direction;
+};
+
+struct GameItemControlMovement
+{
+    int itemInstanceId;
+    Direction direction;
+};
+
+struct GameItemControlSelected
+{
+    int itemInstanceId;
+};
+
+struct GameItemDamaged
+{
+    int itemInstanceId;
     int damage;
 };
 
-struct CreatureHit
+struct GameItemMoved
 {
-    int creatureId;
-    int damage;
+    int itemInstanceId;
+};
+
+struct GameItemRemoved
+{
+    int itemInstanceId;
+};
+
+struct GameItemSpawned
+{
+    int itemInstanceId;
 };
 
 using GameEvent = std::variant<
-    CharacterSpawned,
-    CreatureSpawned,
-    CharacterMoved,
-    CharacterHit,
-    CreatureHit
+    ComponentAdded,
+    ComponentRemoved,
+    GameItemAttack,
+    GameItemControlDirection,
+    GameItemControlMovement,
+    GameItemControlSelected,
+    GameItemDamaged,
+    GameItemMoved,
+    GameItemRemoved,
+    GameItemSpawned
 >;
 
 #endif // GAMEEVENT_H

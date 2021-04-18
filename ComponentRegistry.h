@@ -10,6 +10,8 @@ class Component;
 class ComponentRegistry
 {
 public:
+    static constexpr int MaxComponentCount = 32;
+
     static bool add (Component const & newComponent);
 
     static Component * find (int componentId)

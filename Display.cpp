@@ -46,26 +46,35 @@ void Display::update ()
 
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
     mGame->output() << "Character ";
-    for (auto const & character: mGame->characters())
+    for (auto const & item: mGame->items())
     {
-        mGame->output() << std::setw(5) << drawable->symbol(&character);
+        if (item.hasTag("pc"))
+        {
+            mGame->output() << std::setw(5) << drawable->symbol(&item);
+        }
     }
     mGame->output() << std::endl;
 
     auto health = ComponentRegistry::find<ComponentHealth>();
     mGame->output() << "Health    ";
-    for (auto const & character: mGame->characters())
+    for (auto const & item: mGame->items())
     {
-        mGame->output() << std::setw(5) << health->health(&character);
+        if (item.hasTag("pc"))
+        {
+            mGame->output() << std::setw(5) << health->health(&item);
+        }
     }
     mGame->output() << std::endl;
 
     auto location = ComponentRegistry::find<ComponentLocation>();
     mGame->output() << "Direction ";
-    for (auto const & character: mGame->characters())
+    for (auto const & item: mGame->items())
     {
-        char symbol = directionSymbol(location->direction(&character));
-        mGame->output() << std::setw(5) << symbol;
+        if (item.hasTag("pc"))
+        {
+            char symbol = directionSymbol(location->direction(&item));
+            mGame->output() << std::setw(5) << symbol;
+        }
     }
     mGame->output() << std::endl;
 

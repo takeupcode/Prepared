@@ -111,25 +111,23 @@ void GameStateExploring::draw ()
     mGame->level()->draw();
 
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
-    for (auto const & character: mGame->characters())
+    for (auto const & item: mGame->items())
     {
-        drawable->draw(&character, display);
-    }
-
-    for (auto const & creature: mGame->creatures())
-    {
-        drawable->draw(&creature, display);
+        if (item.hasTag("pc") || item.hasTag("npc"))
+        {
+            drawable->draw(&item, display);
+        }
     }
 
     display->update();
 }
 
 void GameStateExploring::operator () (
-    CharacterMoved const & characterMoved) const
+    GameItemMoved const & moved) const
 {
     auto display = mGame->display();
-    auto character = mGame->findCharacter(
-        characterMoved.characterId);
+    auto character = mGame->findItem(
+        moved.itemInstanceId);
 
     if (character == nullptr)
     {
@@ -199,14 +197,14 @@ void GameStateExploring::operator () (
 }
 
 void GameStateExploring::operator () (
-    CharacterHit const & characterHit) const
+    GameItemDamaged const & damaged) const
 {
-    int characterId = characterHit.characterId;
-    int damage = characterHit.damage;
+    int instanceId = damaged.itemInstanceId;
+    int damage = damaged.damage;
     auto display = mGame->display();
-    auto character = mGame->findCharacter(characterId);
+    auto item = mGame->findItem(instanceId);
 
-    if (character == nullptr)
+    if (item == nullptr)
     {
         return;
     }
@@ -214,51 +212,38 @@ void GameStateExploring::operator () (
     display->beginStreamingToDialog();
 
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
-    display->dialogBuffer()
-        << "Character " << drawable->symbol(character)
-        << " hit with " << damage << " damage.";
-
-    auto health = ComponentRegistry::find<ComponentHealth>();
-    if (health->isDead(character))
+    if (item->hasTag("pc"))
     {
-        display->dialogBuffer() << " And died.";
+        display->dialogBuffer()
+            << "Character " << drawable->symbol(item)
+            << " hit with " << damage << " damage.";
+
+        auto health = ComponentRegistry::find<ComponentHealth>();
+        if (health->isDead(item))
+        {
+            display->dialogBuffer() << " And died.";
+        }
     }
-
-    display->endStreamingToDialog();
-}
-
-void GameStateExploring::operator () (
-    CreatureHit const & creatureHit) const
-{
-    int creatureId = creatureHit.creatureId;
-    int damage = creatureHit.damage;
-    auto display = mGame->display();
-    auto creature = mGame->findCreature(creatureId);
-
-    if (creature == nullptr)
+    else if (item->hasTag("npc"))
     {
-        return;
-    }
+        display->dialogBuffer()
+            << "Creature hit with " << damage << " damage.";
 
-    display->beginStreamingToDialog();
+        auto health = ComponentRegistry::find<ComponentHealth>();
+        if (health->isDead(item))
+        {
+            display->dialogBuffer() << " And died.";
 
-    display->dialogBuffer()
-        << "Creature hit with " << damage << " damage.";
-
-    auto health = ComponentRegistry::find<ComponentHealth>();
-    if (health->isDead(creature))
-    {
-        display->dialogBuffer() << " And died.";
-
-        mGame->creatures().erase(
-            std::find_if(
-                mGame->creatures().begin(),
-                mGame->creatures().end(),
-                [creatureId] (auto const & creature)
-                {
-                    return creature.id() == creatureId;
-                }
-            ));
+            mGame->items().erase(
+                std::find_if(
+                    mGame->items().begin(),
+                    mGame->items().end(),
+                    [instanceId] (auto const & creature)
+                    {
+                        return creature.instanceId() == instanceId;
+                    }
+                ));
+        }
     }
 
     display->endStreamingToDialog();

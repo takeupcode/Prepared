@@ -121,7 +121,7 @@ GameState::StateAction CommandAttack::execute (Game * game) const
         return GameState::Keep {};
     }
 
-    auto character = game->findCharacter(characterId.value());
+    auto character = game->findItem(characterId.value());
     if (character == nullptr)
     {
         return GameState::Keep {};
@@ -133,11 +133,16 @@ GameState::StateAction CommandAttack::execute (Game * game) const
         location->direction(character));
 
     auto health = ComponentRegistry::find<ComponentHealth>();
-    for (auto & creature: game->creatures())
+    for (auto & item: game->items())
     {
+        if (!item.hasTag("npc"))
+        {
+            continue;
+        }
+
         for (auto const & attack: attacks)
         {
-            if (location->location(&creature) == attack)
+            if (location->location(&item) == attack)
             {
                 if (game->randomPercent() > 80)
                 {
@@ -145,11 +150,11 @@ GameState::StateAction CommandAttack::execute (Game * game) const
                 }
 
                 int damage = 4;
-                health->setHealth(&creature, -damage, true);
+                health->setHealth(&item, -damage, true);
                 //creature.setAttackerId(characterId);
 
-                game->addEvent(CreatureHit {
-                    creature.id(),
+                game->addEvent(GameItemDamaged {
+                    item.instanceId(),
                     damage});
             }
         }

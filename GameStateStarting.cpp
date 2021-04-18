@@ -25,31 +25,31 @@ GameStateStarting::GameStateStarting (Game * game)
     auto registeredGameItem = GameItemRegistry::find("gold");
     if (registeredGameItem != nullptr)
     {
-        GameItem gameItem(registeredGameItem->id());
+        GameItem gold(registeredGameItem->id());
 
-        gameItem.addComponent(identifiable->id());
+        gold.addComponent(mGame, identifiable->id());
 
-        identifiable->setCount(&gameItem, 10);
+        identifiable->setCount(&gold, 10);
 
-        mCharacters.back().items().push_back(gameItem);
+        mCharacters.back().items().push_back(gold);
     }
 
     registeredGameItem = GameItemRegistry::find("torch");
     if (registeredGameItem != nullptr)
     {
-        GameItem gameItem(registeredGameItem->id());
+        GameItem torch1(registeredGameItem->id());
 
-        gameItem.addComponent(identifiable->id());
-        gameItem.addComponent(consumable->id());
+        torch1.addComponent(mGame, consumable->id());
+        consumable->setPercentageRemaining(&torch1, 100.0);
 
-        identifiable->setUniqueInstanceId(&gameItem);
-        consumable->setPercentageRemaining(&gameItem, 100.0);
+        mCharacters.back().items().push_back(torch1);
 
-        mCharacters.back().items().push_back(gameItem);
+        GameItem torch2(registeredGameItem->id());
 
-        identifiable->setUniqueInstanceId(&gameItem);
+        torch2.addComponent(mGame, consumable->id());
+        consumable->setPercentageRemaining(&torch2, 100.0);
 
-        mCharacters.back().items().push_back(gameItem);
+        mCharacters.back().items().push_back(torch2);
     }
 }
 
@@ -132,15 +132,14 @@ GameItem GameStateStarting::createCharacter (char symbol) const
     auto registeredCharacter = GameItemRegistry::find("character");
     GameItem character(registeredCharacter->id());
 
-    character.addComponent(drawable->id());
+    character.addComponent(mGame, drawable->id());
     drawable->setSymbol(&character, symbol);
 
-    character.addComponent(health->id());
+    character.addComponent(mGame, health->id());
     health->setMaxHealth(&character, 60);
     health->setHealth(&character, 60);
 
-    character.addComponent(identifiable->id());
-    identifiable->setUniqueInstanceId(&character);
+    character.addComponent(mGame, identifiable->id());
     identifiable->setShortcutId(&character, static_cast<int>(mCharacters.size()) + 1);
 
     int playersLayerId = 0;
@@ -151,10 +150,10 @@ GameItem GameStateStarting::createCharacter (char symbol) const
         playersLayerId = layerItem->id();
     }
 
-    character.addComponent(layer->id());
+    character.addComponent(mGame, layer->id());
     layer->setLayerId(&character, playersLayerId);
 
-    character.addComponent(location->id());
+    character.addComponent(mGame, location->id());
     // The actual location will be set later.
 
     return character;

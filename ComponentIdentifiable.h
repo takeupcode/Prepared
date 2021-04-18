@@ -8,8 +8,6 @@
 class ComponentIdentifiable : public Component
 {
 public:
-    static int constexpr FirstInstanceId = 100;
-
     static std::string const PermanentId;
 
     ComponentIdentifiable () = default;
@@ -18,17 +16,6 @@ public:
     {
         return PermanentId;
     }
-
-    int instanceId (
-        GameItem const * gameItem,
-        int defaultValue = 0) const;
-
-    void setInstanceId (
-        GameItem * gameItem,
-        int value);
-
-    void setUniqueInstanceId (
-        GameItem * gameItem);
 
     int shortcutId (
         GameItem const * gameItem,

@@ -57,7 +57,6 @@ private:
         unsigned int count) const;
 
     std::vector<GameItem> displayGroupCollectionToGameItems (
-        ComponentIdentifiable * identifiable,
         std::vector<DisplayGroup> const & source) const;
 
     void transferItems (

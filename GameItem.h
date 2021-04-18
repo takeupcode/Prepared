@@ -1,6 +1,7 @@
 #ifndef GAMEITEM_H
 #define GAMEITEM_H
 
+#include "ComponentRegistry.h"
 #include "GameItemRegistry.h"
 
 #include <bitset>
@@ -11,14 +12,26 @@
 #include <vector>
 
 class Display;
+class Game;
 
 class GameItem
 {
 public:
+    static int constexpr FirstInstanceId = 100;
+
     using Value = std::variant<bool, char, int, double, std::string>;
 
     GameItem (int id)
     : mId(id)
+    {
+        static int nextInstanceId = FirstInstanceId;
+
+        mInstanceId = nextInstanceId++;
+    }
+
+    GameItem (int id, int)
+    : mId(id),
+      mInstanceId(0)
     { }
 
     GameItem (GameItem const & src) = default;
@@ -32,9 +45,15 @@ public:
         return mId;
     }
 
+    int instanceId () const
+    {
+        return mInstanceId;
+    }
+
     bool hasComponent (int componentId) const
     {
-        if (componentId < 0 || componentId >= MaxComponentCount)
+        if (componentId < 0 ||
+            componentId >= ComponentRegistry::MaxComponentCount)
         {
             return false;
         }
@@ -44,7 +63,12 @@ public:
             return true;
         }
 
-        auto registeredItem = GameItemRegistry::find(mId);
+        if (instanceId() == 0)
+        {
+            return false;
+        }
+
+        auto registeredItem = GameItemRegistry::find(id());
         if (registeredItem == nullptr)
         {
             throw std::logic_error("GameItem not registered.");
@@ -53,9 +77,9 @@ public:
         return registeredItem->mComponents[componentId];
     }
 
-    bool addComponent (int componentId);
+    bool addComponent (Game * game, int componentId);
 
-    bool removeComponent (int componentId);
+    bool removeComponent (Game * game, int componentId);
 
     std::vector<GameItem> & items ()
     {
@@ -67,7 +91,7 @@ public:
         return mItems;
     }
 
-    bool hasTag (std::string const & tag) const
+    bool hasDirectTag (std::string const & tag) const
     {
         if (mTags.find(tag) != mTags.end())
         {
@@ -75,6 +99,22 @@ public:
         }
 
         return false;
+    }
+
+    bool hasTag (std::string const & tag) const
+    {
+        if (hasDirectTag(tag))
+        {
+            return true;
+        }
+
+        auto registeredItem = GameItemRegistry::find(id());
+        if (registeredItem == nullptr)
+        {
+            throw std::logic_error("GameItem not registered.");
+        }
+
+        return registeredItem->hasDirectTag(tag);
     }
 
     bool addTag (std::string const & tag);
@@ -97,11 +137,10 @@ private:
         Value mValue;
     };
 
-    static constexpr int MaxComponentCount = 32;
-
     bool hasDirectComponent (int componentId) const
     {
-        if (componentId < 0 || componentId >= MaxComponentCount)
+        if (componentId < 0 ||
+            componentId >= ComponentRegistry::MaxComponentCount)
         {
             return false;
         }
@@ -115,7 +154,8 @@ private:
     }
 
     int mId;
-    std::bitset<MaxComponentCount> mComponents;
+    int mInstanceId;
+    std::bitset<ComponentRegistry::MaxComponentCount> mComponents;
     std::vector<Property> mProperties;
     std::set<std::string> mTags;
 

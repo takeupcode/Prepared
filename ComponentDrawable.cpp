@@ -23,14 +23,14 @@ void ComponentDrawable::draw (GameItem const * gameItem, Display * display) cons
     auto defaultCharacterId = display->game()->defaultCharacterId();
     if (defaultCharacterId)
     {
-        if (defaultCharacterId.value() < ComponentIdentifiable::FirstInstanceId)
+        if (defaultCharacterId.value() < GameItem::FirstInstanceId)
         {
             int shortcutId = identifiable->shortcutId(gameItem);
             isImportant = defaultCharacterId.value() == shortcutId;
         }
         else
         {
-            int instanceId = identifiable->instanceId(gameItem);
+            int instanceId = gameItem->instanceId();
             isImportant = defaultCharacterId.value() == instanceId;
         }
     }

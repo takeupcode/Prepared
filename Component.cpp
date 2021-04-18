@@ -120,7 +120,7 @@ void Component::adjustValue (
     std::string const & name,
     bool & value) const
 {
-    for (int i = 0; i < GameItem::MaxComponentCount; ++i)
+    for (int i = 0; i < ComponentRegistry::MaxComponentCount; ++i)
     {
         if (gameItem->hasDirectComponent(i))
         {
@@ -138,7 +138,7 @@ void Component::adjustValue (
     std::string const & name,
     char & value) const
 {
-    for (int i = 0; i < GameItem::MaxComponentCount; ++i)
+    for (int i = 0; i < ComponentRegistry::MaxComponentCount; ++i)
     {
         if (gameItem->hasDirectComponent(i))
         {
@@ -156,7 +156,7 @@ void Component::adjustValue (
     std::string const & name,
     int & value) const
 {
-    for (int i = 0; i < GameItem::MaxComponentCount; ++i)
+    for (int i = 0; i < ComponentRegistry::MaxComponentCount; ++i)
     {
         if (gameItem->hasDirectComponent(i))
         {
@@ -174,7 +174,7 @@ void Component::adjustValue (
     std::string const & name,
     double & value) const
 {
-    for (int i = 0; i < GameItem::MaxComponentCount; ++i)
+    for (int i = 0; i < ComponentRegistry::MaxComponentCount; ++i)
     {
         if (gameItem->hasDirectComponent(i))
         {
@@ -192,7 +192,7 @@ void Component::adjustValue (
     std::string const & name,
     std::string & value) const
 {
-    for (int i = 0; i < GameItem::MaxComponentCount; ++i)
+    for (int i = 0; i < ComponentRegistry::MaxComponentCount; ++i)
     {
         if (gameItem->hasDirectComponent(i))
         {

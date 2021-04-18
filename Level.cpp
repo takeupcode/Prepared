@@ -38,8 +38,6 @@ void Level::generate ()
     auto treeTile = GameItemRegistry::find("tree tile");
     auto grassTile = GameItemRegistry::find("grass tile");
 
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-
     mTiles.clear();
 
     mHeight = static_cast<int>(terrain.size());
@@ -53,8 +51,6 @@ void Level::generate ()
                 case GameMap::Terrain::Water:
                 {
                     GameItem waterInst(deepTile->id());
-                    waterInst.addComponent(identifiable->id());
-                    identifiable->setUniqueInstanceId(&waterInst);
                     mTiles.push_back(waterInst);
                     break;
                 }
@@ -62,8 +58,6 @@ void Level::generate ()
                 case GameMap::Terrain::Sand:
                 {
                     GameItem sandInst(sandTile->id());
-                    sandInst.addComponent(identifiable->id());
-                    identifiable->setUniqueInstanceId(&sandInst);
                     mTiles.push_back(sandInst);
                     break;
                 }
@@ -71,8 +65,6 @@ void Level::generate ()
                 case GameMap::Terrain::Marsh:
                 {
                     GameItem marshInst(marshTile->id());
-                    marshInst.addComponent(identifiable->id());
-                    identifiable->setUniqueInstanceId(&marshInst);
                     mTiles.push_back(marshInst);
                     break;
                 }
@@ -80,15 +72,11 @@ void Level::generate ()
                 case GameMap::Terrain::Tree:
                 {
                     GameItem dirtTreeInst(dirtTile->id());
-                    dirtTreeInst.addComponent(identifiable->id());
-                    identifiable->setUniqueInstanceId(&dirtTreeInst);
                     mTiles.push_back(dirtTreeInst);
 
                     GameItem treeInst(treeTile->id());
-                    treeInst.addComponent(identifiable->id());
-                    identifiable->setUniqueInstanceId(&treeInst);
                     mLayeredTiles.try_emplace(
-                        identifiable->instanceId(&dirtTreeInst),
+                        dirtTreeInst.instanceId(),
                         treeInst);
                     break;
                 }
@@ -96,15 +84,11 @@ void Level::generate ()
                 case GameMap::Terrain::Grass:
                 {
                     GameItem dirtGrassInst(dirtTile->id());
-                    dirtGrassInst.addComponent(identifiable->id());
-                    identifiable->setUniqueInstanceId(&dirtGrassInst);
                     mTiles.push_back(dirtGrassInst);
 
                     GameItem grassInst(grassTile->id());
-                    grassInst.addComponent(identifiable->id());
-                    identifiable->setUniqueInstanceId(&grassInst);
                     mLayeredTiles.try_emplace(
-                        identifiable->instanceId(&dirtGrassInst),
+                        dirtGrassInst.instanceId(),
                         grassInst);
                     break;
                 }
@@ -112,8 +96,6 @@ void Level::generate ()
                 case GameMap::Terrain::Ice:
                 {
                     GameItem iceInst(iceTile->id());
-                    iceInst.addComponent(identifiable->id());
-                    identifiable->setUniqueInstanceId(&iceInst);
                     mTiles.push_back(iceInst);
                     break;
                 }
@@ -124,6 +106,7 @@ void Level::generate ()
     mEntryLocations.push_back(findRandomLocationOnLand());
 
     auto consumable = ComponentRegistry::find<ComponentConsumable>();
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
 
     Point2i location(0, 0);
     int index;
@@ -132,7 +115,7 @@ void Level::generate ()
     if (registeredGameItem != nullptr)
     {
         GameItem gameItem(registeredGameItem->id());
-        gameItem.addComponent(identifiable->id());
+        gameItem.addComponent(mGame, identifiable->id());
 
         location = findRandomLocationOnLand();
         index = pointToRowMajorIndex(location, mWidth);
@@ -149,7 +132,7 @@ void Level::generate ()
     if (registeredGameItem != nullptr)
     {
         GameItem gameItem(registeredGameItem->id());
-        gameItem.addComponent(identifiable->id());
+        gameItem.addComponent(mGame, identifiable->id());
 
         location = findRandomLocationOnLand();
         index = pointToRowMajorIndex(location, mWidth);
@@ -161,7 +144,7 @@ void Level::generate ()
     if (registeredGameItem != nullptr)
     {
         GameItem gameItem(registeredGameItem->id());
-        gameItem.addComponent(identifiable->id());
+        gameItem.addComponent(mGame, identifiable->id());
 
         location = findRandomLocationOnLand();
         index = pointToRowMajorIndex(location, mWidth);
@@ -173,12 +156,10 @@ void Level::generate ()
     if (registeredGameItem != nullptr)
     {
         GameItem gameItem(registeredGameItem->id());
-        gameItem.addComponent(identifiable->id());
-        gameItem.addComponent(consumable->id());
+        gameItem.addComponent(mGame, consumable->id());
 
         location = findRandomLocationOnLand();
         index = pointToRowMajorIndex(location, mWidth);
-        identifiable->setUniqueInstanceId(&gameItem);
         consumable->setPercentageRemaining(&gameItem, 55.0);
         mTiles[index].items().push_back(gameItem);
     }
@@ -230,7 +211,6 @@ std::vector<Point2i> Level::entryLocations (unsigned int count) const
 
 void Level::spawnCreatures () const
 {
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     auto location = ComponentRegistry::find<ComponentLocation>();
 
     for (int i = 0; i < 10; ++i)
@@ -240,7 +220,7 @@ void Level::spawnCreatures () const
         auto point = findRandomLocationOnLand();
         location->setLocation(&creature, point);
 
-        mGame->addEvent(CreatureSpawned {identifiable->instanceId(&creature)});
+        mGame->addEvent(GameItemSpawned {creature.instanceId()});
     }
 }
 
@@ -297,11 +277,9 @@ GameItem * Level::findTile (Point2i const & location)
         return nullptr;
     }
 
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-
     auto & baseTile =
         mTiles[pointToRowMajorIndex(location, mWidth)];
-    auto baseInstanceId = identifiable->instanceId(&baseTile);
+    auto baseInstanceId = baseTile.instanceId();
 
     auto layerIter = mLayeredTiles.find(baseInstanceId);
     if (layerIter != mLayeredTiles.end())
@@ -323,11 +301,9 @@ GameItem const * Level::findTile (Point2i const & location) const
         return nullptr;
     }
 
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-
     auto & baseTile =
         mTiles[pointToRowMajorIndex(location, mWidth)];
-    auto baseInstanceId = identifiable->instanceId(&baseTile);
+    auto baseInstanceId = baseTile.instanceId();
 
     auto layerIter = mLayeredTiles.find(baseInstanceId);
     if (layerIter != mLayeredTiles.end())
@@ -341,18 +317,14 @@ GameItem const * Level::findTile (Point2i const & location) const
 GameItem Level::createRat () const
 {
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     auto layer = ComponentRegistry::find<ComponentLayer>();
     auto location = ComponentRegistry::find<ComponentLocation>();
 
     auto registeredItem = GameItemRegistry::find("rat");
     GameItem rat(registeredItem->id());
 
-    rat.addComponent(drawable->id());
+    rat.addComponent(mGame, drawable->id());
     drawable->setSymbol(&rat, 'a');
-
-    rat.addComponent(identifiable->id());
-    identifiable->setUniqueInstanceId(&rat);
 
     int animalsLayerId = 0;
     GameItem * layerItem;
@@ -362,10 +334,10 @@ GameItem Level::createRat () const
         animalsLayerId = layerItem->id();
     }
 
-    rat.addComponent(layer->id());
+    rat.addComponent(mGame, layer->id());
     layer->setLayerId(&rat, animalsLayerId);
 
-    rat.addComponent(location->id());
+    rat.addComponent(mGame, location->id());
     // The actual location will be set later.
 
     return rat;

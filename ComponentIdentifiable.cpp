@@ -5,28 +5,6 @@
 
 std::string const ComponentIdentifiable::PermanentId = "identifiable";
 
-int ComponentIdentifiable::instanceId (
-    GameItem const * gameItem,
-    int defaultValue) const
-{
-    return getDirectValue<int, int>(gameItem, "instanceId", defaultValue);
-}
-
-void ComponentIdentifiable::setInstanceId (
-    GameItem * gameItem,
-    int value)
-{
-    setDirectValue<int, int>(gameItem, "instanceId", value);
-}
-
-void ComponentIdentifiable::setUniqueInstanceId (
-    GameItem * gameItem)
-{
-    static int nextInstanceId = ComponentIdentifiable::FirstInstanceId;
-
-    setDirectValue<int, int>(gameItem, "instanceId", nextInstanceId++);
-}
-
 int ComponentIdentifiable::shortcutId (
     GameItem const * gameItem,
     int defaultValue) const

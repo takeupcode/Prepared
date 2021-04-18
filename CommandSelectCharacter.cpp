@@ -23,7 +23,7 @@ std::unique_ptr<Command> CommandSelectCharacter::tryCreate (
 GameState::StateAction CommandSelectCharacter::execute (
     Game * game) const
 {
-    auto character = game->findCharacter(mCharacterId);
+    auto character = game->findItem(mCharacterId);
     if (character == nullptr)
     {
         return GameState::Keep {};

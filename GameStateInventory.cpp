@@ -17,7 +17,7 @@ GameStateInventory::GameStateInventory (
     int characterId)
 : GameState(game), mCharacter(nullptr), mTile(nullptr)
 {
-    mCharacter = mGame->findCharacter(characterId);
+    mCharacter = mGame->findItem(characterId);
     if (mCharacter == nullptr)
     {
         return;
@@ -180,7 +180,7 @@ void GameStateInventory::addToDisplayGroupCollection (
     for (auto const & gameItem: source)
     {
         auto registeredId = gameItem.id();
-        auto instanceId = identifiable->instanceId(&gameItem);
+        auto instanceId = gameItem.instanceId();
         auto count = identifiable->count(&gameItem);
 
         auto groupIter = std::find_if(
@@ -246,7 +246,7 @@ std::vector<GameItem> GameStateInventory::removeFromDisplayGroupCollection (
     }
 
     auto & firstGameItem = *itemsIter;
-    auto firstInstanceId = identifiable->instanceId(&firstGameItem);
+    auto firstInstanceId = firstGameItem.instanceId();
 
     // First handle the case where the single item uses a count.
     if (firstInstanceId == 0)
@@ -306,7 +306,6 @@ std::vector<GameItem> GameStateInventory::removeFromDisplayGroupCollection (
 }
 
 std::vector<GameItem> GameStateInventory::displayGroupCollectionToGameItems (
-    ComponentIdentifiable * identifiable,
     std::vector<DisplayGroup> const & source) const
 {
     std::vector<GameItem> result;
@@ -320,7 +319,7 @@ std::vector<GameItem> GameStateInventory::displayGroupCollectionToGameItems (
         }
 
         auto & firstGameItem = *itemsIter;
-        auto firstInstanceId = identifiable->instanceId(&firstGameItem);
+        auto firstInstanceId = firstGameItem.instanceId();
 
         // First handle the case where the single item uses a count.
         if (firstInstanceId == 0)
@@ -421,10 +420,8 @@ void GameStateInventory::handleDrop ()
 
 void GameStateInventory::handleDone ()
 {
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-
     mCharacter->items() = displayGroupCollectionToGameItems(
-        identifiable, mItemsOwned);
+        mItemsOwned);
     mTile->items() = displayGroupCollectionToGameItems(
-        identifiable, mItemsAvailable);
+        mItemsAvailable);
 }

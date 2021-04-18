@@ -129,13 +129,12 @@ GameState::StateAction CommandMove::execute (Game * game) const
         return GameState::Keep {};
     }
 
-    auto character = game->findCharacter(characterId.value());
+    auto character = game->findItem(characterId.value());
     if (character == nullptr)
     {
         return GameState::Keep {};
     }
 
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     auto layer = ComponentRegistry::find<ComponentLayer>();
     auto location = ComponentRegistry::find<ComponentLocation>();
 
@@ -154,8 +153,8 @@ GameState::StateAction CommandMove::execute (Game * game) const
             game->level()->width(),
             game->level()->height());
 
-        int instanceId = identifiable->instanceId(character);
-        game->addEvent(CharacterMoved {instanceId});
+        int instanceId = character->instanceId();
+        game->addEvent(GameItemMoved {instanceId});
     }
 
     return GameState::Keep {};

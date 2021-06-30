@@ -46,7 +46,7 @@ bool ComponentHealth::isDead (
     GameItem const * gameItem,
     bool defaultValue) const
 {
-    return getChainedValue<bool, bool>(gameItem, "isDead", defaultValue);
+    return getDirectValue<bool, bool>(gameItem, "isDead", defaultValue);
 }
 
 void ComponentHealth::setIsDead (
@@ -60,7 +60,7 @@ bool ComponentHealth::isUnconscious (
     GameItem const * gameItem,
     bool defaultValue) const
 {
-    return getChainedValue<bool, bool>(gameItem, "isUnconscious", defaultValue);
+    return getDirectValue<bool, bool>(gameItem, "isUnconscious", defaultValue);
 }
 
 void ComponentHealth::setIsUnconscious (

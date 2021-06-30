@@ -10,11 +10,14 @@
 #include "Prompt.h"
 
 #include <istream>
+#include <map>
 #include <memory>
 #include <optional>
 #include <ostream>
 #include <random>
+#include <set>
 #include <stack>
+#include <unordered_map>
 #include <vector>
 
 class Game
@@ -46,20 +49,27 @@ public:
     GameOptions & options ();
 
     std::optional<int> defaultCharacterId () const;
-    void setDefaultCharacterId (int id);
+    void setDefaultCharacterId (int instanceId);
 
-    std::vector<GameItem> & items ();
-    std::vector<GameItem> const & items () const;
+    GameItem * createItem (int id);
 
-    GameItem * findItem (int id);
-    GameItem const * findItem (int id) const;
+    void eraseItem (int instanceId);
+
+    GameItem * findItem (int instanceId) const;
+
+    std::vector<GameItem *> findItems (
+        std::string const & tag) const;
+
+    template <typename Pred>
+    std::vector<GameItem *> findItemsIf (
+        std::string const & tag,
+        Pred pred) const;
 
     void addEvent (GameEvent const & event);
 
     std::vector<GameEvent> const & events () const;
 
-    void spawnCharacters (
-        std::vector<GameItem> const & characters);
+    void spawnCharacters ();
 
     void spawnCreatures ();
 
@@ -77,6 +87,14 @@ public:
 
     void operator () (GameState::Pop & action);
 
+    void operator () (TagAdded const & event);
+
+    void operator () (TagRemoved const & event);
+
+    template <typename EventVariant>
+    void operator () (EventVariant const &)
+    { }
+
 private:
     GameState::StateAction processInput ();
 
@@ -91,17 +109,15 @@ private:
 
     void setLayerCollisionsInLevel ();
 
-    void placeCharacters ();
-
     void reset (unsigned int seed = 0);
+
+    void createGameItemIndex (std::string const & name);
 
     std::ostream & mOutput;
     std::istream & mInput;
     bool mGameOver;
     Prompt mPrompt;
     std::optional<int> mDefaultCharacterId;
-    unsigned int mCharacterCount;
-    std::vector<GameItem> mGameItems;
     std::vector<GameEvent> mEvents;
     std::vector<int> mLayerIds;
     std::stack<std::unique_ptr<GameState>> mStates;
@@ -113,6 +129,41 @@ private:
     std::uniform_int_distribution<std::mt19937::result_type>
         mPercent;
     GameOptions mOptions;
+
+    using GameItemMap =
+        std::unordered_map<int, std::unique_ptr<GameItem>>;
+    using GameItemIndex = std::set<int>;
+    using GameItemIndices = std::set<std::string>;
+    using GameItemIndicesMap = std::map<std::string, GameItemIndex>;
+    using GameItemShortcutMap = std::map<int, int>;
+    GameItemMap mGameItems;
+    GameItemIndices mGameItemIndices;
+    GameItemIndicesMap mGameItemIndicesMap;
+    GameItemShortcutMap mGameItemShortcutMap;
 };
+
+template <typename Pred>
+std::vector<GameItem *> Game::findItemsIf (
+    std::string const & tag,
+    Pred pred) const
+{
+    std::vector<GameItem *> result;
+
+    if (mGameItemIndices.find(tag) != mGameItemIndices.end())
+    {
+        auto iter = mGameItemIndicesMap.at(tag).cbegin();
+        while (iter != mGameItemIndicesMap.at(tag).cend())
+        {
+            auto item = findItem(*iter);
+            if (item != nullptr && pred(item))
+            {
+                result.push_back(item);
+            }
+            ++iter;
+        }
+    }
+
+    return result;
+}
 
 #endif // GAME_H

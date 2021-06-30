@@ -54,14 +54,42 @@ bool GameItem::removeComponent (Game * game, int componentId)
     return false;
 }
 
-bool GameItem::addTag (std::string const & tag)
+bool GameItem::addItem (int instanceId)
 {
-    return mTags.insert(tag).second;
+    return mItems.insert(instanceId).second;
 }
 
-bool GameItem::removeTag (std::string const & tag)
+bool GameItem::removeItem (int instanceId)
 {
-    return mTags.erase(tag) == 1;
+    return mItems.erase(instanceId) == 1;
+}
+
+bool GameItem::addTag (Game * game, std::string const & tag)
+{
+    bool tagAdded = mTags.insert(tag).second;
+
+    if (tagAdded && instanceId() != 0)
+    {
+        game->addEvent(TagAdded {
+            mInstanceId,
+            tag});
+    }
+
+    return tagAdded;
+}
+
+bool GameItem::removeTag (Game * game, std::string const & tag)
+{
+    bool tagRemoved = mTags.erase(tag) == 1;
+
+    if (tagRemoved && instanceId() != 0)
+    {
+        game->addEvent(TagRemoved {
+            mInstanceId,
+            tag});
+    }
+
+    return tagRemoved;
 }
 
 void GameItem::draw (Display * display) const

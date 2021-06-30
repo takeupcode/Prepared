@@ -1,7 +1,7 @@
 #ifndef GAMEITEMREGISTRY_H
 #define GAMEITEMREGISTRY_H
 
-#include <memory>
+#include <map>
 #include <string>
 #include <unordered_map>
 
@@ -18,9 +18,14 @@ public:
     static void clear ();
 
 private:
+    using PermanentIdMap =
+        std::map<std::string, int>;
+    using GameItemMap =
+        std::unordered_map<int, std::unique_ptr<GameItem>>;
+
     static int mNextId;
-    static std::unordered_map<std::string, int> mGameItemIds;
-    static std::unordered_map<int, std::unique_ptr<GameItem>> mGameItems;
+    static PermanentIdMap mGameItemIds;
+    static GameItemMap mGameItems;
 };
 
 #endif // GAMEITEMREGISTRY_H

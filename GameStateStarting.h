@@ -25,9 +25,9 @@ public:
     { }
 
 private:
-    GameItem createCharacter (char symbol) const;
+    void createCharacters ();
 
-    std::vector<GameItem> mCharacters;
+    std::vector<char> mCharacterSymbols;
 };
 
 #endif // GAMESTATESTARTING_H

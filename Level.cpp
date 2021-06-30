@@ -39,66 +39,57 @@ void Level::generate ()
     auto grassTile = GameItemRegistry::find("grass tile");
 
     mTiles.clear();
+    mEntryLocations.clear();
+    mLayeredTiles.clear();
+    mCollidingLayerIds.clear();
 
     mHeight = static_cast<int>(terrain.size());
     mWidth = static_cast<int>(terrain[0].size());
+    GameItem * tile;
+    GameItem * layeredTile;
     for (int y = 0; y < mHeight; ++y)
     {
         for (int x = 0; x < mWidth; ++x)
         {
             switch (terrain[y][x])
             {
-                case GameMap::Terrain::Water:
-                {
-                    GameItem waterInst(deepTile->id());
-                    mTiles.push_back(waterInst);
-                    break;
-                }
+            case GameMap::Terrain::Water:
+                tile = mGame->createItem(deepTile->id());
+                mTiles.push_back(tile);
+                break;
 
-                case GameMap::Terrain::Sand:
-                {
-                    GameItem sandInst(sandTile->id());
-                    mTiles.push_back(sandInst);
-                    break;
-                }
+            case GameMap::Terrain::Sand:
+                tile = mGame->createItem(sandTile->id());
+                mTiles.push_back(tile);
+                break;
 
-                case GameMap::Terrain::Marsh:
-                {
-                    GameItem marshInst(marshTile->id());
-                    mTiles.push_back(marshInst);
-                    break;
-                }
+            case GameMap::Terrain::Marsh:
+                tile = mGame->createItem(marshTile->id());
+                mTiles.push_back(tile);
+                break;
 
-                case GameMap::Terrain::Tree:
-                {
-                    GameItem dirtTreeInst(dirtTile->id());
-                    mTiles.push_back(dirtTreeInst);
+            case GameMap::Terrain::Tree:
+                tile = mGame->createItem(dirtTile->id());
+                mTiles.push_back(tile);
+                layeredTile = mGame->createItem(treeTile->id());
+                mLayeredTiles.try_emplace(
+                    tile->instanceId(),
+                    layeredTile);
+                break;
 
-                    GameItem treeInst(treeTile->id());
-                    mLayeredTiles.try_emplace(
-                        dirtTreeInst.instanceId(),
-                        treeInst);
-                    break;
-                }
+            case GameMap::Terrain::Grass:
+                tile = mGame->createItem(dirtTile->id());
+                mTiles.push_back(tile);
+                layeredTile = mGame->createItem(grassTile->id());
+                mLayeredTiles.try_emplace(
+                    tile->instanceId(),
+                    layeredTile);
+                break;
 
-                case GameMap::Terrain::Grass:
-                {
-                    GameItem dirtGrassInst(dirtTile->id());
-                    mTiles.push_back(dirtGrassInst);
-
-                    GameItem grassInst(grassTile->id());
-                    mLayeredTiles.try_emplace(
-                        dirtGrassInst.instanceId(),
-                        grassInst);
-                    break;
-                }
-
-                case GameMap::Terrain::Ice:
-                {
-                    GameItem iceInst(iceTile->id());
-                    mTiles.push_back(iceInst);
-                    break;
-                }
+            case GameMap::Terrain::Ice:
+                tile = mGame->createItem(iceTile->id());
+                mTiles.push_back(tile);
+                break;
             }
         }
     }
@@ -110,58 +101,62 @@ void Level::generate ()
 
     Point2i location(0, 0);
     int index;
+    GameItem * resource;
 
     auto registeredGameItem = GameItemRegistry::find("gold");
     if (registeredGameItem != nullptr)
     {
-        GameItem gameItem(registeredGameItem->id());
-        gameItem.addComponent(mGame, identifiable->id());
+        resource = mGame->createItem(registeredGameItem->id());
+        resource->addComponent(mGame, identifiable->id());
 
         location = findRandomLocationOnLand();
         index = pointToRowMajorIndex(location, mWidth);
-        identifiable->setCount(&gameItem, 30);
-        mTiles[index].items().push_back(gameItem);
+        identifiable->setCount(resource, 30);
+        mTiles[index]->addItem(resource->instanceId());
+
+        resource = mGame->createItem(registeredGameItem->id());
+        resource->addComponent(mGame, identifiable->id());
 
         location = findRandomLocationOnLand();
         index = pointToRowMajorIndex(location, mWidth);
-        identifiable->setCount(&gameItem, 20);
-        mTiles[index].items().push_back(gameItem);
+        identifiable->setCount(resource, 20);
+        mTiles[index]->addItem(resource->instanceId());
     }
 
     registeredGameItem = GameItemRegistry::find("silver");
     if (registeredGameItem != nullptr)
     {
-        GameItem gameItem(registeredGameItem->id());
-        gameItem.addComponent(mGame, identifiable->id());
+        resource = mGame->createItem(registeredGameItem->id());
+        resource->addComponent(mGame, identifiable->id());
 
         location = findRandomLocationOnLand();
         index = pointToRowMajorIndex(location, mWidth);
-        identifiable->setCount(&gameItem, 10);
-        mTiles[index].items().push_back(gameItem);
+        identifiable->setCount(resource, 10);
+        mTiles[index]->addItem(resource->instanceId());
     }
 
     registeredGameItem = GameItemRegistry::find("red apple");
     if (registeredGameItem != nullptr)
     {
-        GameItem gameItem(registeredGameItem->id());
-        gameItem.addComponent(mGame, identifiable->id());
+        resource = mGame->createItem(registeredGameItem->id());
+        resource->addComponent(mGame, identifiable->id());
 
         location = findRandomLocationOnLand();
         index = pointToRowMajorIndex(location, mWidth);
-        identifiable->setCount(&gameItem, 2);
-        mTiles[index].items().push_back(gameItem);
+        identifiable->setCount(resource, 2);
+        mTiles[index]->addItem(resource->instanceId());
     }
 
     registeredGameItem = GameItemRegistry::find("torch");
     if (registeredGameItem != nullptr)
     {
-        GameItem gameItem(registeredGameItem->id());
-        gameItem.addComponent(mGame, consumable->id());
+        resource = mGame->createItem(registeredGameItem->id());
+        resource->addComponent(mGame, consumable->id());
 
         location = findRandomLocationOnLand();
         index = pointToRowMajorIndex(location, mWidth);
-        consumable->setPercentageRemaining(&gameItem, 55.0);
-        mTiles[index].items().push_back(gameItem);
+        consumable->setPercentageRemaining(resource, 55.0);
+        mTiles[index]->addItem(resource->instanceId());
     }
 }
 
@@ -218,9 +213,9 @@ void Level::spawnCreatures () const
         auto creature = createRat();
 
         auto point = findRandomLocationOnLand();
-        location->setLocation(&creature, point);
+        location->setLocation(creature, point);
 
-        mGame->addEvent(GameItemSpawned {creature.instanceId()});
+        mGame->addEvent(GameItemSpawned {creature->instanceId()});
     }
 }
 
@@ -266,7 +261,7 @@ Point2i Level::calculateMoveLocation (
     return proposed;
 }
 
-GameItem * Level::findTile (Point2i const & location)
+GameItem * Level::findTile (Point2i const & location) const
 {
     if (location.x < 0 ||
         static_cast<unsigned int>(location.x) >= mWidth ||
@@ -277,54 +272,30 @@ GameItem * Level::findTile (Point2i const & location)
         return nullptr;
     }
 
-    auto & baseTile =
+    auto baseTile =
         mTiles[pointToRowMajorIndex(location, mWidth)];
-    auto baseInstanceId = baseTile.instanceId();
+    auto baseInstanceId = baseTile->instanceId();
 
     auto layerIter = mLayeredTiles.find(baseInstanceId);
     if (layerIter != mLayeredTiles.end())
     {
-        return &mLayeredTiles.at(baseInstanceId);
+        return mLayeredTiles.at(baseInstanceId);
     }
 
-    return &baseTile;
+    return baseTile;
 }
 
-GameItem const * Level::findTile (Point2i const & location) const
-{
-    if (location.x < 0 ||
-        static_cast<unsigned int>(location.x) >= mWidth ||
-        location.y < 0 ||
-        static_cast<unsigned int>(location.y) >= mHeight
-        )
-    {
-        return nullptr;
-    }
-
-    auto & baseTile =
-        mTiles[pointToRowMajorIndex(location, mWidth)];
-    auto baseInstanceId = baseTile.instanceId();
-
-    auto layerIter = mLayeredTiles.find(baseInstanceId);
-    if (layerIter != mLayeredTiles.end())
-    {
-        return &mLayeredTiles.at(baseInstanceId);
-    }
-
-    return &baseTile;
-}
-
-GameItem Level::createRat () const
+GameItem * Level::createRat () const
 {
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
     auto layer = ComponentRegistry::find<ComponentLayer>();
     auto location = ComponentRegistry::find<ComponentLocation>();
 
     auto registeredItem = GameItemRegistry::find("rat");
-    GameItem rat(registeredItem->id());
+    GameItem * rat = mGame->createItem(registeredItem->id());
 
-    rat.addComponent(mGame, drawable->id());
-    drawable->setSymbol(&rat, 'a');
+    rat->addComponent(mGame, drawable->id());
+    drawable->setSymbol(rat, 'a');
 
     int animalsLayerId = 0;
     GameItem * layerItem;
@@ -334,10 +305,10 @@ GameItem Level::createRat () const
         animalsLayerId = layerItem->id();
     }
 
-    rat.addComponent(mGame, layer->id());
-    layer->setLayerId(&rat, animalsLayerId);
+    rat->addComponent(mGame, layer->id());
+    layer->setLayerId(rat, animalsLayerId);
 
-    rat.addComponent(mGame, location->id());
+    rat->addComponent(mGame, location->id());
     // The actual location will be set later.
 
     return rat;

@@ -22,7 +22,7 @@ std::unique_ptr<Command> CommandTurn::tryCreate (
     char directionChar;
     if (inputString.size() == 2)
     {
-        if (inputString[0] < '0' || inputString[0] > '9')
+        if (inputString[0] < '1' || inputString[0] > '9')
         {
             return nullptr;
         }

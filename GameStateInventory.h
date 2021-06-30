@@ -3,6 +3,7 @@
 
 #include "GameState.h"
 
+#include <string>
 #include <vector>
 
 class ComponentGroupable;
@@ -32,11 +33,19 @@ private:
     struct DisplayGroup
     {
         int registeredId;
-        unsigned int total;
-        std::vector<GameItem> items;
+        std::string name; // Store name so it's readily available.
+        unsigned int count; // Only modify item counts when done.
+        std::vector<int> items;
+    };
+    struct DisplayItem
+    {
+        int registeredId;
+        std::string name; // Store name so it's readily available.
+        unsigned int count; // Only modify item counts when done.
+        int instanceId;
     };
 
-    std::string formatItemCount (DisplayGroup * displayGroup) const;
+    std::string formatItemCount (DisplayGroup & displayGroup) const;
 
     void displayItems (
         std::ostream & output,
@@ -47,16 +56,29 @@ private:
     void addToDisplayGroupCollection (
         ComponentGroupable * groupable,
         ComponentIdentifiable * identifiable,
-        std::vector<GameItem> const & source,
+        std::vector<int> const & source,
         std::vector<DisplayGroup> & destination) const;
 
-    std::vector<GameItem> removeFromDisplayGroupCollection (
+    void addToDisplayGroupCollection (
+        ComponentGroupable * groupable,
+        ComponentIdentifiable * identifiable,
+        DisplayGroup const & source,
+        std::vector<DisplayGroup> & destination) const;
+
+    void addToDisplayGroupCollection (
+        ComponentGroupable * groupable,
+        ComponentIdentifiable * identifiable,
+        DisplayItem const & source,
+        std::vector<DisplayGroup> & destination) const;
+
+    DisplayGroup removeFromDisplayGroupCollection (
         ComponentIdentifiable * identifiable,
         std::vector<DisplayGroup> & source,
         unsigned int index,
         unsigned int count) const;
 
-    std::vector<GameItem> displayGroupCollectionToGameItems (
+    std::vector<int> displayGroupCollectionToGameItems (
+        ComponentIdentifiable * identifiable,
         std::vector<DisplayGroup> const & source) const;
 
     void transferItems (

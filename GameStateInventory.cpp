@@ -85,9 +85,9 @@ void GameStateInventory::processEvents ()
 }
 
 std::string GameStateInventory::formatItemCount (
-    DisplayGroup * displayGroup) const
+    DisplayGroup & displayGroup) const
 {
-    return "(" + std::to_string(displayGroup->total) + ")";
+    return "(" + std::to_string(displayGroup.count) + ")";
 }
 
 void GameStateInventory::displayItems (
@@ -101,16 +101,15 @@ void GameStateInventory::displayItems (
 
     auto smallest = std::min(itemsOwned.size(), itemsAvailable.size());
 
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     unsigned int row = 1;
     unsigned int i = 0;
     for (; i < smallest; ++i, ++row)
     {
-        auto itemOwnedName = identifiable->name(&itemsOwned[i].items[0]);
-        auto itemOwnedCountStr = formatItemCount(&itemsOwned[i]);
+        auto & itemOwnedName = itemsOwned[i].name;
+        auto itemOwnedCountStr = formatItemCount(itemsOwned[i]);
 
-        auto itemAvailableName = identifiable->name(&itemsAvailable[i].items[0]);
-        auto itemAvailableCountStr = formatItemCount(&itemsAvailable[i]);
+        auto & itemAvailableName = itemsAvailable[i].name;
+        auto itemAvailableCountStr = formatItemCount(itemsAvailable[i]);
 
         output << std::setw(5) << row
             << std::setw(20) << itemOwnedName
@@ -122,8 +121,8 @@ void GameStateInventory::displayItems (
 
     for (; i < itemsOwned.size(); ++i, ++row)
     {
-        std::string itemName = identifiable->name(&itemsOwned[i].items[0]);
-        auto itemCountStr = formatItemCount(&itemsOwned[i]);
+        auto & itemName = itemsOwned[i].name;
+        auto itemCountStr = formatItemCount(itemsOwned[i]);
         output << std::setw(5) << row
             << std::setw(20) << itemName
             << std::setw(10) << itemCountStr
@@ -132,8 +131,8 @@ void GameStateInventory::displayItems (
 
     for (; i < itemsAvailable.size(); ++i, ++row)
     {
-        std::string itemName = identifiable->name(&itemsAvailable[i].items[0]);
-        auto itemCountStr = formatItemCount(&itemsAvailable[i]);
+        auto & itemName = itemsAvailable[i].name;
+        auto itemCountStr = formatItemCount(itemsAvailable[i]);
 
         output << std::setw(5) << row
             << std::setw(50) << itemName
@@ -174,126 +173,188 @@ void GameStateInventory::draw ()
 void GameStateInventory::addToDisplayGroupCollection (
     ComponentGroupable * groupable,
     ComponentIdentifiable * identifiable,
-    std::vector<GameItem> const & source,
+    std::vector<int> const & source,
     std::vector<DisplayGroup> & destination) const
 {
-    for (auto const & gameItem: source)
+    for (auto const instanceId: source)
     {
-        auto registeredId = gameItem.id();
-        auto instanceId = gameItem.instanceId();
-        auto count = identifiable->count(&gameItem);
-
-        auto groupIter = std::find_if(
-            destination.begin(), destination.end(),
-            [registeredId] (auto const & group)
-            { return group.registeredId == registeredId; });
-        if (groupIter != destination.end())
+        auto gameItem = mGame->findItem(instanceId);
+        if (gameItem == nullptr)
         {
-            if (instanceId == 0)
-            {
-                // For countable items, all we need to do is update the
-                // total count and the item count to be the same. There
-                // will only be a single item which is why we use items[0].
-                groupIter->total += count;
-                identifiable->setCount(
-                    &(groupIter->items[0]),
-                    groupIter->total);
-
-                continue;
-            }
-            else
-            {
-                // For individual items, we need to check if the current
-                // item belongs in the group or not. We only need to check
-                // against the first item in the group because all the items
-                // in the group also belong to the same group.
-                if (groupable->areGroupedTogether(&gameItem, &(groupIter->items[0])))
-                {
-                    ++groupIter->total;
-                    groupIter->items.push_back(gameItem);
-
-                    continue;
-                }
-            }
+            continue;
         }
 
-        // Add a completely new group if either the game item registered id
-        // is not yet in the collection, or if it is but the game item doesn't
-        // belong in the existing group.
-        DisplayGroup newGroup {registeredId, count};
-        newGroup.items.push_back(gameItem);
-        destination.push_back(std::move(newGroup));
+        auto registeredId = gameItem->id();
+        auto const & name = identifiable->name(gameItem);
+        auto count = identifiable->count(gameItem);
+
+        DisplayItem newItem {
+            registeredId,
+            name,
+            count,
+            instanceId
+        };
+        addToDisplayGroupCollection (
+            groupable,
+            identifiable,
+            newItem,
+            destination);
     }
 }
 
-std::vector<GameItem> GameStateInventory::removeFromDisplayGroupCollection (
+void GameStateInventory::addToDisplayGroupCollection (
+    ComponentGroupable * groupable,
+    ComponentIdentifiable * identifiable,
+    DisplayGroup const & source,
+    std::vector<DisplayGroup> & destination) const
+{
+    for (auto const instanceId: source.items)
+    {
+        auto gameItem = mGame->findItem(instanceId);
+        if (gameItem == nullptr)
+        {
+            continue;
+        }
+
+        DisplayItem newItem {
+            source.registeredId,
+            source.name,
+            source.items.size() == 1 ? source.count : 1,
+            instanceId
+        };
+        addToDisplayGroupCollection (
+            groupable,
+            identifiable,
+            newItem,
+            destination);
+    }
+}
+
+void GameStateInventory::addToDisplayGroupCollection (
+    ComponentGroupable * groupable,
+    ComponentIdentifiable * identifiable,
+    DisplayItem const & source,
+    std::vector<DisplayGroup> & destination) const
+{
+    auto gameItem = mGame->findItem(source.instanceId);
+    if (gameItem == nullptr)
+    {
+        return;
+    }
+
+    auto registeredId = source.registeredId;
+    auto groupIter = std::find_if(
+        destination.begin(), destination.end(),
+        [registeredId] (auto const & group)
+        { return group.registeredId == registeredId; });
+    if (groupIter != destination.end())
+    {
+        auto groupedItem = mGame->findItem(groupIter->items[0]);
+        if (groupedItem == nullptr)
+        {
+            return;
+        }
+
+        auto countable = identifiable->isCountable(groupedItem);
+        if (countable)
+        {
+            // For countable items, all we need to do is update
+            // the temp count. There will only be a single item
+            // but we only update its count if the user accepts
+            // the changes.
+            groupIter->count += source.count;
+        }
+        else
+        {
+            // For individual items, we need to check if the
+            // current item belongs in the group or not.
+            // We only need to check against the first item in
+            // the group because all the items belong to the
+            // same group.
+            if (groupable->areGroupedTogether(gameItem, groupedItem))
+            {
+                ++groupIter->count;
+                groupIter->items.push_back(source.instanceId);
+            }
+        }
+        return;
+    }
+
+    // Add a completely new group if either the game item registered
+    // id is not yet in the collection, or if it is but the game item
+    // doesn't belong in the existing group.
+    DisplayGroup newGroup {
+        registeredId,
+        source.name,
+        source.count};
+    newGroup.items.push_back(source.instanceId);
+    destination.push_back(std::move(newGroup));
+}
+
+GameStateInventory::DisplayGroup
+GameStateInventory::removeFromDisplayGroupCollection (
     ComponentIdentifiable * identifiable,
     std::vector<DisplayGroup> & source,
     unsigned int index,
     unsigned int count) const
 {
-    std::vector<GameItem> result;
+    DisplayGroup result {
+        source[index].registeredId,
+        source[index].name,
+        0 // This will be set later once instance ids are also added.
+    };
 
-    if (count > source[index].total)
-    {
-        count = source[index].total;
-    }
-
-    auto itemsIter = source[index].items.begin();
-    if (itemsIter == source[index].items.end())
+    if (source[index].items.empty())
     {
         return result;
     }
 
-    auto & firstGameItem = *itemsIter;
-    auto firstInstanceId = firstGameItem.instanceId();
+    auto itemsIter = source[index].items.begin();
+    auto firstInstanceId = *itemsIter;
+    auto firstGameItem = mGame->findItem(firstInstanceId);
+    if (firstGameItem == nullptr)
+    {
+        return result;
+    }
 
     // First handle the case where the single item uses a count.
-    if (firstInstanceId == 0)
+    auto countable = identifiable->isCountable(firstGameItem);
+    if (countable)
     {
-        GameItem copiedFirstGameItem(firstGameItem);
-        auto itemCount = identifiable->count(&firstGameItem);
-        unsigned int takeCount = 0;
-        if (count >= itemCount)
+        if (count >= source[index].count)
         {
             // Take all the game item.
-            takeCount = itemCount;
+            count = source[index].count;
             source.erase(source.begin() + index);
         }
         else
         {
             // Take some of the game item.
-            takeCount = count;
-            identifiable->setCount(&firstGameItem, itemCount - takeCount);
-            source[index].total = itemCount - takeCount;
+            source[index].count -= count;
         }
 
-        identifiable->setCount(&copiedFirstGameItem, takeCount);
-        result.push_back(std::move(copiedFirstGameItem));
+        result.items.push_back(firstInstanceId);
+        result.count = count;
 
         return result;
     }
 
     // Otherwise, handle the case where the game items are stored
     // individually.
+    if (count > source[index].items.size())
+    {
+        count = static_cast<unsigned int>(source[index].items.size());
+    }
     unsigned int remainingCount = count;
     while (remainingCount != 0)
     {
-        if (itemsIter == source[index].items.end())
-        {
-            // This should not happen unless the total is greater
-            // than the sum of each item count.
-            break;
-        }
-
-        auto & gameItem = *itemsIter;
-        GameItem copiedGameItem(gameItem);
+        result.items.push_back(*itemsIter);
+        ++result.count;
 
         source[index].items.erase(itemsIter);
-        source[index].total -= 1;
+        source[index].count -= 1;
         itemsIter = source[index].items.begin();
 
-        result.push_back(std::move(copiedGameItem));
         --remainingCount;
     }
 
@@ -305,27 +366,33 @@ std::vector<GameItem> GameStateInventory::removeFromDisplayGroupCollection (
     return result;
 }
 
-std::vector<GameItem> GameStateInventory::displayGroupCollectionToGameItems (
+std::vector<int> GameStateInventory::displayGroupCollectionToGameItems (
+    ComponentIdentifiable * identifiable,
     std::vector<DisplayGroup> const & source) const
 {
-    std::vector<GameItem> result;
+    std::vector<int> result;
 
     for (auto const & displayGroup: source)
     {
-        auto itemsIter = displayGroup.items.begin();
-        if (itemsIter == displayGroup.items.end())
+        if (displayGroup.items.empty())
         {
             continue;
         }
 
-        auto & firstGameItem = *itemsIter;
-        auto firstInstanceId = firstGameItem.instanceId();
+        auto itemsIter = displayGroup.items.begin();
+        auto firstInstanceId = *itemsIter;
+        auto firstGameItem = mGame->findItem(firstInstanceId);
+        if (firstGameItem == nullptr)
+        {
+            return result;
+        }
 
         // First handle the case where the single item uses a count.
-        if (firstInstanceId == 0)
+        auto countable = identifiable->isCountable(firstGameItem);
+        if (countable)
         {
-            GameItem copiedFirstGameItem(firstGameItem);
-            result.push_back(std::move(copiedFirstGameItem));
+            identifiable->setCount(firstGameItem, displayGroup.count);
+            result.push_back(firstInstanceId);
 
             continue;
         }
@@ -334,9 +401,7 @@ std::vector<GameItem> GameStateInventory::displayGroupCollectionToGameItems (
         // individually.
         while (itemsIter != displayGroup.items.end())
         {
-            auto & gameItem = *itemsIter;
-            GameItem copiedGameItem(gameItem);
-            result.push_back(std::move(copiedGameItem));
+            result.push_back(*itemsIter);
             ++itemsIter;
         }
     }
@@ -388,7 +453,7 @@ void GameStateInventory::handleTransfer (
     }
 
     int quantityDesired = 1;
-    int quantityAvailable = source[row - 1].total;
+    int quantityAvailable = source[row - 1].count;
     if (quantityAvailable > 1)
     {
         quantityDesired = game->prompt().promptNumber(
@@ -420,8 +485,12 @@ void GameStateInventory::handleDrop ()
 
 void GameStateInventory::handleDone ()
 {
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+
     mCharacter->items() = displayGroupCollectionToGameItems(
+        identifiable,
         mItemsOwned);
     mTile->items() = displayGroupCollectionToGameItems(
+        identifiable,
         mItemsAvailable);
 }

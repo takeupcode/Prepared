@@ -3,6 +3,7 @@
 #include "ComponentHealth.h"
 #include "ComponentLocation.h"
 #include "ComponentRegistry.h"
+#include "Constants.h"
 #include "Direction.h"
 #include "Game.h"
 #include "Point.h"
@@ -25,7 +26,7 @@ std::unique_ptr<Command> CommandAttack::tryCreate (
     std::optional<int> characterId;
     if (inputString.size() == 2)
     {
-        if (inputString[0] < '0' || inputString[0] > '9')
+        if (inputString[0] < '1' || inputString[0] > '9')
         {
             return nullptr;
         }
@@ -133,16 +134,11 @@ GameState::StateAction CommandAttack::execute (Game * game) const
         location->direction(character));
 
     auto health = ComponentRegistry::find<ComponentHealth>();
-    for (auto & item: game->items())
+    for (auto item: game->findItems(TAGS::NPC))
     {
-        if (!item.hasTag("npc"))
-        {
-            continue;
-        }
-
         for (auto const & attack: attacks)
         {
-            if (location->location(&item) == attack)
+            if (location->location(item) == attack)
             {
                 if (game->randomPercent() > 80)
                 {
@@ -150,11 +146,11 @@ GameState::StateAction CommandAttack::execute (Game * game) const
                 }
 
                 int damage = 4;
-                health->setHealth(&item, -damage, true);
+                health->setHealth(item, -damage, true);
                 //creature.setAttackerId(characterId);
 
                 game->addEvent(GameItemDamaged {
-                    item.instanceId(),
+                    item->instanceId(),
                     damage});
             }
         }

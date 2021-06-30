@@ -19,6 +19,20 @@ void ComponentIdentifiable::setShortcutId (
     setDirectValue<int, int>(gameItem, "shortcutId", value);
 }
 
+bool ComponentIdentifiable::isCountable (
+    GameItem const * gameItem,
+    bool defaultValue) const
+{
+    return getChainedValue<bool, bool>(gameItem, "isCountable", defaultValue);
+}
+
+void ComponentIdentifiable::setIsCountable (
+    GameItem * gameItem,
+    bool value)
+{
+    setDirectValue<bool, bool>(gameItem, "isCountable", value);
+}
+
 unsigned int ComponentIdentifiable::count (
     GameItem const * gameItem,
     unsigned int defaultValue) const

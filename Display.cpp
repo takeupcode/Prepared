@@ -5,6 +5,7 @@
 #include "ComponentHealth.h"
 #include "ComponentLocation.h"
 #include "ComponentRegistry.h"
+#include "Constants.h"
 #include "Game.h"
 
 #include <algorithm>
@@ -46,35 +47,26 @@ void Display::update ()
 
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
     mGame->output() << "Character ";
-    for (auto const & item: mGame->items())
+    for (auto const & item: mGame->findItems(TAGS::PC))
     {
-        if (item.hasTag("pc"))
-        {
-            mGame->output() << std::setw(5) << drawable->symbol(&item);
-        }
+        mGame->output() << std::setw(5) << drawable->symbol(item);
     }
     mGame->output() << std::endl;
 
     auto health = ComponentRegistry::find<ComponentHealth>();
     mGame->output() << "Health    ";
-    for (auto const & item: mGame->items())
+    for (auto const & item: mGame->findItems(TAGS::PC))
     {
-        if (item.hasTag("pc"))
-        {
-            mGame->output() << std::setw(5) << health->health(&item);
-        }
+        mGame->output() << std::setw(5) << health->health(item);
     }
     mGame->output() << std::endl;
 
     auto location = ComponentRegistry::find<ComponentLocation>();
     mGame->output() << "Direction ";
-    for (auto const & item: mGame->items())
+    for (auto const & item: mGame->findItems(TAGS::PC))
     {
-        if (item.hasTag("pc"))
-        {
-            char symbol = directionSymbol(location->direction(&item));
-            mGame->output() << std::setw(5) << symbol;
-        }
+        char symbol = directionSymbol(location->direction(item));
+        mGame->output() << std::setw(5) << symbol;
     }
     mGame->output() << std::endl;
 

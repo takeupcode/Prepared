@@ -19,26 +19,11 @@ class GameItem
 public:
     static int constexpr FirstInstanceId = 100;
 
-    using Value = std::variant<bool, char, int, double, std::string>;
+    GameItem (GameItem const & src) = delete;
+    GameItem (GameItem && src) = delete;
 
-    GameItem (int id)
-    : mId(id)
-    {
-        static int nextInstanceId = FirstInstanceId;
-
-        mInstanceId = nextInstanceId++;
-    }
-
-    GameItem (int id, int)
-    : mId(id),
-      mInstanceId(0)
-    { }
-
-    GameItem (GameItem const & src) = default;
-    GameItem (GameItem && src) = default;
-
-    GameItem & operator = (GameItem const & src) = default;
-    GameItem & operator = (GameItem && src) = default;
+    GameItem & operator = (GameItem const & src) = delete;
+    GameItem & operator = (GameItem && src) = delete;
 
     int id () const
     {
@@ -81,17 +66,26 @@ public:
 
     bool removeComponent (Game * game, int componentId);
 
-    std::vector<GameItem> & items ()
+    bool hasItem (int instanceId) const
     {
-        return mItems;
+        if (mItems.find(instanceId) != mItems.end())
+        {
+            return true;
+        }
+
+        return false;
     }
 
-    std::vector<GameItem> const & items () const
+    bool addItem (int instanceId);
+
+    bool removeItem (int instanceId);
+
+    std::vector<int> items () const
     {
-        return mItems;
+        return std::vector<int>(mItems.begin(), mItems.end());
     }
 
-    bool hasDirectTag (std::string const & tag) const
+    bool hasTag (std::string const & tag) const
     {
         if (mTags.find(tag) != mTags.end())
         {
@@ -101,25 +95,9 @@ public:
         return false;
     }
 
-    bool hasTag (std::string const & tag) const
-    {
-        if (hasDirectTag(tag))
-        {
-            return true;
-        }
+    bool addTag (Game * game, std::string const & tag);
 
-        auto registeredItem = GameItemRegistry::find(id());
-        if (registeredItem == nullptr)
-        {
-            throw std::logic_error("GameItem not registered.");
-        }
-
-        return registeredItem->hasDirectTag(tag);
-    }
-
-    bool addTag (std::string const & tag);
-
-    bool removeTag (std::string const & tag);
+    bool removeTag (Game * game, std::string const & tag);
 
     std::vector<std::string> tags () const
     {
@@ -130,12 +108,33 @@ public:
 
 private:
     friend class Component;
+    friend class Game;
+    friend class GameItemRegistry;
 
-    struct Property
+    // Only the Game and GameItemRegistry classes can
+    // construct GameItem instances.
+    GameItem (int id)
+    : mId(id)
     {
-        std::string mName;
-        Value mValue;
-    };
+        auto registeredItem = GameItemRegistry::find(mId);
+        if (registeredItem == nullptr)
+        {
+            throw std::logic_error("GameItem not registered.");
+        }
+
+        static int nextInstanceId = FirstInstanceId;
+        mInstanceId = nextInstanceId++;
+
+        for (auto const & tag: registeredItem->tags())
+        {
+            mTags.insert(tag);
+        }
+    }
+
+    GameItem (int id, int)
+    : mId(id),
+      mInstanceId(0)
+    { }
 
     bool hasDirectComponent (int componentId) const
     {
@@ -153,13 +152,20 @@ private:
         return false;
     }
 
+    using Value = std::variant<bool, char, int, double, std::string>;
+
+    struct Property
+    {
+        std::string mName;
+        Value mValue;
+    };
+
     int mId;
     int mInstanceId;
     std::bitset<ComponentRegistry::MaxComponentCount> mComponents;
     std::vector<Property> mProperties;
     std::set<std::string> mTags;
-
-    std::vector<GameItem> mItems;
+    std::set<int> mItems;
 };
 
 #endif // GAMEITEM_H

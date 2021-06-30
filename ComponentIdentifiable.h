@@ -25,6 +25,14 @@ public:
         GameItem * gameItem,
         int value);
 
+    bool isCountable (
+        GameItem const * gameItem,
+        bool defaultValue = false) const;
+
+    void setIsCountable (
+        GameItem * gameItem,
+        bool value);
+
     unsigned int count (
         GameItem const * gameItem,
         unsigned int defaultValue = 1) const;

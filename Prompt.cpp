@@ -19,6 +19,9 @@ bool Prompt::promptYesOrNo (
     while (true)
     {
         mInput >> input;
+        mInput.ignore(
+            std::numeric_limits<std::streamsize>::max(), '\n');
+
         if (input == 'y' || input == 'Y')
         {
             return true;
@@ -29,10 +32,6 @@ bool Prompt::promptYesOrNo (
         }
         else
         {
-            mInput.clear();
-            mInput.ignore(
-                std::numeric_limits<std::streamsize>::max(), '\n');
-
             mOutput << "Please enter y or n: ";
         }
     }
@@ -56,6 +55,9 @@ int Prompt::promptNumber (
 
             mOutput << "Please enter a valid number: ";
         }
+
+        mInput.ignore(
+            std::numeric_limits<std::streamsize>::max(), '\n');
 
         if (input >= minimum && input <= maximum)
         {
@@ -115,6 +117,8 @@ char Prompt::promptLetter (
     while (true)
     {
         mInput >> input;
+        mInput.ignore(
+            std::numeric_limits<std::streamsize>::max(), '\n');
 
         if ((input >= minimumLower && input <= maximumLower) ||
         (input >= minimumUpper && input <= maximumUpper))
@@ -126,10 +130,6 @@ char Prompt::promptLetter (
 
             return input;
         }
-
-        mInput.clear();
-        mInput.ignore(
-            std::numeric_limits<std::streamsize>::max(), '\n');
 
         mOutput << "Please enter a letter between "
             << minimumLower << " and " << maximumLower << ": ";
@@ -185,6 +185,9 @@ int Prompt::promptChoice (
 
             mOutput << "Please enter a valid number: ";
         }
+
+        mInput.ignore(
+            std::numeric_limits<std::streamsize>::max(), '\n');
 
         if (input >= 0 && input < choices.size())
         {

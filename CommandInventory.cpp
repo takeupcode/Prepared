@@ -19,7 +19,7 @@ std::unique_ptr<Command> CommandInventory::tryCreate (
     std::optional<int> characterId;
     if (inputString.size() == 2)
     {
-        if (inputString[0] < '0' || inputString[0] > '9')
+        if (inputString[0] < '1' || inputString[0] > '9')
         {
             return nullptr;
         }

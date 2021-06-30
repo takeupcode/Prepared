@@ -3,8 +3,8 @@
 #include "GameItem.h"
 
 int GameItemRegistry::mNextId = 1;
-std::unordered_map<std::string, int> GameItemRegistry::mGameItemIds;
-std::unordered_map<int, std::unique_ptr<GameItem>> GameItemRegistry::mGameItems;
+GameItemRegistry::PermanentIdMap GameItemRegistry::mGameItemIds;
+GameItemRegistry::GameItemMap GameItemRegistry::mGameItems;
 
 GameItem * GameItemRegistry::add (std::string const & permanentId)
 {
@@ -14,7 +14,7 @@ GameItem * GameItemRegistry::add (std::string const & permanentId)
         mGameItemIds.try_emplace(permanentId, mNextId);
         mGameItems.try_emplace(
             mNextId,
-            std::make_unique<GameItem>(mNextId, 0));
+            std::unique_ptr<GameItem>(new GameItem(mNextId, 0)));
 
         gameItem = find(mNextId);
         ++mNextId;

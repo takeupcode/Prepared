@@ -4,6 +4,7 @@
 #include "Direction.h"
 #include "Point.h"
 
+#include <string>
 #include <variant>
 
 struct ComponentAdded
@@ -61,6 +62,18 @@ struct GameItemSpawned
     int itemInstanceId;
 };
 
+struct TagAdded
+{
+    int itemInstanceId;
+    std::string tag;
+};
+
+struct TagRemoved
+{
+    int itemInstanceId;
+    std::string tag;
+};
+
 using GameEvent = std::variant<
     ComponentAdded,
     ComponentRemoved,
@@ -71,7 +84,9 @@ using GameEvent = std::variant<
     GameItemDamaged,
     GameItemMoved,
     GameItemRemoved,
-    GameItemSpawned
+    GameItemSpawned,
+    TagAdded,
+    TagRemoved
 >;
 
 #endif // GAMEEVENT_H

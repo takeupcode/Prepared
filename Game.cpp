@@ -16,6 +16,7 @@
 #include "ComponentPhysical.h"
 #include "ComponentRegistry.h"
 #include "ComponentTradeable.h"
+#include "Constants.h"
 #include "GameItemRegistry.h"
 #include "GameStateStarting.h"
 #include "Point.h"
@@ -32,7 +33,6 @@ Game::Game(
   mInput(input),
   mGameOver(true),
   mPrompt(output, input),
-  mCharacterCount(0),
   mOriginalSeed(seed),
   mPercent(0, 100)
 { }
@@ -115,82 +115,99 @@ std::optional<int> Game::defaultCharacterId () const
     return mDefaultCharacterId;
 }
 
-void Game::setDefaultCharacterId (int id)
+void Game::setDefaultCharacterId (int instanceId)
 {
-    if (findItem(id) == nullptr)
+    if (findItem(instanceId) == nullptr)
     {
         mDefaultCharacterId = std::nullopt;
     }
     else
     {
-        mDefaultCharacterId = id;
+        mDefaultCharacterId = instanceId;
     }
 }
 
-std::vector<GameItem> & Game::items ()
+GameItem * Game::createItem (int id)
 {
-    return mGameItems;
+    auto gameItem = std::unique_ptr<GameItem>(new GameItem(id));
+    int instanceId = gameItem->instanceId();
+    GameItem * result = mGameItems.try_emplace(
+        instanceId,
+        std::move(gameItem)).
+        first->second.get();
+
+    for (auto const & tag: result->tags())
+    {
+        if (mGameItemIndices.find(tag) != mGameItemIndices.end())
+        {
+            mGameItemIndicesMap[tag].insert(instanceId);
+        }
+    }
+
+    return result;
 }
 
-std::vector<GameItem> const & Game::items () const
+void Game::eraseItem (int instanceId)
 {
-    return mGameItems;
+    auto item = findItem(instanceId);
+    if (item == nullptr)
+    {
+        return;
+    }
+
+    for (auto const & tag: item->tags())
+    {
+        if (mGameItemIndices.find(tag) != mGameItemIndices.end())
+        {
+            mGameItemIndicesMap[tag].erase(instanceId);
+        }
+    }
+
+    mGameItems.erase(instanceId);
 }
 
-GameItem * Game::findItem (int id)
+GameItem * Game::findItem (int instanceId) const
 {
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+    if (instanceId < GameItem::FirstInstanceId)
+    {
+        auto shortcutResult = mGameItemShortcutMap.find(instanceId);
+        if (shortcutResult == mGameItemShortcutMap.end())
+        {
+            return nullptr;
+        }
 
-    if (id < GameItem::FirstInstanceId)
-    {
-        for (auto & item: mGameItems)
-        {
-            if (identifiable->shortcutId(&item) == id)
-            {
-                return &item;
-            }
-        }
-    }
-    else
-    {
-        for (auto & item: mGameItems)
-        {
-            if (item.instanceId() == id)
-            {
-                return &item;
-            }
-        }
+        instanceId = shortcutResult->second;
     }
 
-    return nullptr;
+    auto gameItemsMapResult = mGameItems.find(instanceId);
+    if (gameItemsMapResult == mGameItems.end())
+    {
+        return nullptr;
+    }
+
+    return gameItemsMapResult->second.get();
 }
 
-GameItem const * Game::findItem (int id) const
+std::vector<GameItem *> Game::findItems (
+    std::string const & tag) const
 {
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+    std::vector<GameItem *> result;
 
-    if (id < GameItem::FirstInstanceId)
+    if (mGameItemIndices.find(tag) != mGameItemIndices.end())
     {
-        for (auto & item: mGameItems)
+        auto iter = mGameItemIndicesMap.at(tag).cbegin();
+        while (iter != mGameItemIndicesMap.at(tag).cend())
         {
-            if (identifiable->shortcutId(&item) == id)
+            auto item = findItem(*iter);
+            if (item != nullptr)
             {
-                return &item;
+                result.push_back(item);
             }
-        }
-    }
-    else
-    {
-        for (auto & item: mGameItems)
-        {
-            if (item.instanceId() == id)
-            {
-                return &item;
-            }
+            ++iter;
         }
     }
 
-    return nullptr;
+    return result;
 }
 
 void Game::addEvent (GameEvent const & event)
@@ -203,21 +220,43 @@ std::vector<GameEvent> const & Game::events () const
     return mEvents;
 }
 
-void Game::spawnCharacters (
-    std::vector<GameItem> const & characters)
+void Game::spawnCharacters ()
 {
     mDefaultCharacterId = std::nullopt;
 
+    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
+    auto characters = findItems(TAGS::PC);
     for (auto const & character: characters)
     {
-        mGameItems.push_back(character);
+        int instanceId = character->instanceId();
+        int shortcutId = identifiable->shortcutId(character);
+        mGameItemShortcutMap.try_emplace(shortcutId, instanceId);
 
-        addEvent(GameItemSpawned {character.instanceId()});
+        addEvent(GameItemSpawned {});
     }
 
-    mCharacterCount = static_cast<unsigned int>(characters.size());
+    if (mLevel == nullptr || mDisplay == nullptr)
+    {
+        return;
+    }
 
-    placeCharacters();
+    unsigned int characterCount = static_cast<unsigned int>(
+        characters.size());
+    auto locations = mLevel->entryLocations(characterCount);
+
+    auto location = ComponentRegistry::find<ComponentLocation>();
+
+    unsigned int i = 0;
+    for (auto character: characters)
+    {
+        location->setLocation(character, locations[i]);
+        ++i;
+    }
+
+    mDisplay->ensureVisibleInMap(
+        locations[0],
+        mLevel->width(),
+        mLevel->height());
 }
 
 void Game::setLayerCollisionsInLevel ()
@@ -292,33 +331,6 @@ void Game::setLayerCollisionsInLevel ()
         });
 }
 
-void Game::placeCharacters ()
-{
-    if (mLevel == nullptr || mDisplay == nullptr)
-    {
-        return;
-    }
-
-    auto locations = mLevel->entryLocations(mCharacterCount);
-
-    auto location = ComponentRegistry::find<ComponentLocation>();
-
-    unsigned int i = 0;
-    for (auto & item: mGameItems)
-    {
-        if (item.hasTag("pc"))
-        {
-            location->setLocation(&item, locations[i]);
-            ++i;
-        }
-    }
-
-    mDisplay->ensureVisibleInMap(
-        locations[0],
-        mLevel->width(),
-        mLevel->height());
-}
-
 void Game::spawnCreatures ()
 {
     if (mLevel == nullptr)
@@ -385,6 +397,28 @@ void Game::operator () (GameState::Pop & action)
     mStates.pop();
 }
 
+void Game::operator () (TagAdded const & event)
+{
+    if (mGameItemIndices.find(event.tag) != mGameItemIndices.end())
+    {
+        GameItem * item = findItem(event.itemInstanceId);
+        if (item == nullptr)
+        {
+            return;
+        }
+
+        mGameItemIndicesMap[event.tag].insert(event.itemInstanceId);
+    }
+}
+
+void Game::operator () (TagRemoved const & event)
+{
+    if (mGameItemIndices.find(event.tag) != mGameItemIndices.end())
+    {
+        mGameItemIndicesMap[event.tag].extract(event.itemInstanceId);
+    }
+}
+
 GameState::StateAction Game::processInput ()
 {
     if (mStates.empty())
@@ -407,12 +441,15 @@ void Game::processUpdate ()
 
 void Game::processEvents ()
 {
-    if (mStates.empty())
+    for (auto const & event: mEvents)
     {
-        return;
+        std::visit(*this, event);
     }
 
-    mStates.top()->processEvents();
+    if (!mStates.empty())
+    {
+        mStates.top()->processEvents();
+    }
 
     mEvents.clear();
 }
@@ -621,12 +658,12 @@ void Game::registerItems ()
 
     // Actors
     gameItem = GameItemRegistry::add("character");
-    gameItem->addTag("pc");
+    gameItem->addTag(this, TAGS::PC);
     gameItem->addComponent(this, identifiable->id());
     identifiable->setName(gameItem, "character");
 
     gameItem = GameItemRegistry::add("rat");
-    gameItem->addTag("npc");
+    gameItem->addTag(this, TAGS::NPC);
     gameItem->addComponent(this, identifiable->id());
     identifiable->setName(gameItem, "rat");
 
@@ -662,8 +699,6 @@ void Game::reset (unsigned int seed)
 
     mGameOver = false;
     mDefaultCharacterId = std::nullopt;
-    mCharacterCount = 0;
-    mGameItems.clear();
     mEvents.clear();
     mLayerIds.clear();
     while (!mStates.empty())
@@ -671,6 +706,25 @@ void Game::reset (unsigned int seed)
         mStates.pop();
     }
 
+    mGameItems.clear();
+    mGameItemIndices.clear();
+    mGameItemIndicesMap.clear();
+    mGameItemShortcutMap.clear();
+
+    createGameItemIndex(TAGS::PC);
+    createGameItemIndex(TAGS::NPC);
+
     mDisplay.reset(nullptr);
     mLevel.reset(nullptr);
+}
+
+void Game::createGameItemIndex (std::string const & name)
+{
+    if (mGameItemIndices.find(name) == mGameItemIndices.end())
+    {
+        mGameItemIndices.insert(name);
+
+        GameItemIndex emptyIndex;
+        mGameItemIndicesMap.insert({name, emptyIndex});
+    }
 }

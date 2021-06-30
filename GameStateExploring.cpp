@@ -15,6 +15,7 @@
 #include "ComponentLocation.h"
 #include "ComponentRegistry.h"
 #include "ComponentTradeable.h"
+#include "Constants.h"
 #include "Game.h"
 #include "GameItem.h"
 #include "GameItemRegistry.h"
@@ -111,12 +112,13 @@ void GameStateExploring::draw ()
     mGame->level()->draw();
 
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
-    for (auto const & item: mGame->items())
+    for (auto const & item: mGame->findItems(TAGS::PC))
     {
-        if (item.hasTag("pc") || item.hasTag("npc"))
-        {
-            drawable->draw(&item, display);
-        }
+        drawable->draw(item, display);
+    }
+    for (auto const & item: mGame->findItems(TAGS::NPC))
+    {
+        drawable->draw(item, display);
     }
 
     display->update();
@@ -128,7 +130,6 @@ void GameStateExploring::operator () (
     auto display = mGame->display();
     auto character = mGame->findItem(
         moved.itemInstanceId);
-
     if (character == nullptr)
     {
         return;
@@ -149,14 +150,20 @@ void GameStateExploring::operator () (
         auto findable = ComponentRegistry::find<ComponentFindable>();
         auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
         auto tradeable = ComponentRegistry::find<ComponentTradeable>();
-        for (auto & item: tile->items())
+        for (auto itemInstanceId: tile->items())
         {
-            auto foundCountValid = findable->foundCountValid(&item);
-            auto foundCount = findable->foundCount(&item);
+            auto item = mGame->findItem(itemInstanceId);
+            if (item == nullptr)
+            {
+                continue;
+            }
+
+            auto foundCountValid = findable->foundCountValid(item);
+            auto foundCount = findable->foundCount(item);
             if (!foundCountValid)
             {
-                auto targetCount = findable->targetCount(&item);
-                auto chanceOfFinding = findable->chanceOfFinding(&item);
+                auto targetCount = findable->targetCount(item);
+                auto chanceOfFinding = findable->chanceOfFinding(item);
                 auto percent = mGame->randomPercent();
                 if (percent <= chanceOfFinding)
                 {
@@ -173,16 +180,16 @@ void GameStateExploring::operator () (
                 {
                     foundCount = 0;
                 }
-                findable->setFoundCount(&item, foundCount);
+                findable->setFoundCount(item, foundCount);
             }
 
-            auto itemName = identifiable->name(&item);
+            auto itemName = identifiable->name(item);
             if (itemName.empty())
             {
                 continue;
             }
 
-            auto value = tradeable->value(&item);
+            auto value = tradeable->value(item);
 
             display->dialogBuffer()
                 << " And found "
@@ -212,7 +219,7 @@ void GameStateExploring::operator () (
     display->beginStreamingToDialog();
 
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
-    if (item->hasTag("pc"))
+    if (item->hasTag(TAGS::PC))
     {
         display->dialogBuffer()
             << "Character " << drawable->symbol(item)
@@ -224,7 +231,7 @@ void GameStateExploring::operator () (
             display->dialogBuffer() << " And died.";
         }
     }
-    else if (item->hasTag("npc"))
+    else if (item->hasTag(TAGS::NPC))
     {
         display->dialogBuffer()
             << "Creature hit with " << damage << " damage.";
@@ -234,15 +241,7 @@ void GameStateExploring::operator () (
         {
             display->dialogBuffer() << " And died.";
 
-            mGame->items().erase(
-                std::find_if(
-                    mGame->items().begin(),
-                    mGame->items().end(),
-                    [instanceId] (auto const & creature)
-                    {
-                        return creature.instanceId() == instanceId;
-                    }
-                ));
+            mGame->eraseItem(instanceId);
         }
     }
 

@@ -16,52 +16,26 @@
 
 GameStateStarting::GameStateStarting (Game * game)
 : GameState(game)
-{
-    mCharacters.push_back(createCharacter('1'));
-
-    auto consumable = ComponentRegistry::find<ComponentConsumable>();
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-
-    auto registeredGameItem = GameItemRegistry::find("gold");
-    if (registeredGameItem != nullptr)
-    {
-        GameItem gold(registeredGameItem->id());
-
-        gold.addComponent(mGame, identifiable->id());
-
-        identifiable->setCount(&gold, 10);
-
-        mCharacters.back().items().push_back(gold);
-    }
-
-    registeredGameItem = GameItemRegistry::find("torch");
-    if (registeredGameItem != nullptr)
-    {
-        GameItem torch1(registeredGameItem->id());
-
-        torch1.addComponent(mGame, consumable->id());
-        consumable->setPercentageRemaining(&torch1, 100.0);
-
-        mCharacters.back().items().push_back(torch1);
-
-        GameItem torch2(registeredGameItem->id());
-
-        torch2.addComponent(mGame, consumable->id());
-        consumable->setPercentageRemaining(&torch2, 100.0);
-
-        mCharacters.back().items().push_back(torch2);
-    }
-}
+{ }
 
 GameState::StateAction GameStateStarting::processInput ()
 {
     int inputNumber = mGame->prompt().promptNumber(
         "Enter choice: ");
+    std::string inputString;
 
     switch (inputNumber)
     {
     case 1:
-        mGame->spawnCharacters(mCharacters);
+        if (mCharacterSymbols.empty())
+        {
+            inputString = mGame->prompt().promptText(
+                "Enter symbol for character: ");
+            mCharacterSymbols.push_back(inputString[0]);
+        }
+
+        createCharacters();
+        mGame->spawnCharacters();
         mGame->setDefaultCharacterId(1);
         mGame->spawnCreatures();
         return GameState::Swap {std::unique_ptr<GameState>(
@@ -73,10 +47,9 @@ GameState::StateAction GameStateStarting::processInput ()
         break;
 
     case 3:
-        std::string inputString = mGame->prompt().promptText(
+        inputString = mGame->prompt().promptText(
             "Enter symbol for new character: ");
-        mCharacters.push_back(createCharacter(
-            inputString[0]));
+        mCharacterSymbols.push_back(inputString[0]);
         break;
     }
 
@@ -104,13 +77,12 @@ void GameStateStarting::draw ()
     mGame->output() << std::setw(10) << "Character"
         << std::setw(10) << "Symbol" << std::endl;
 
-    auto drawable = ComponentRegistry::find<ComponentDrawable>();
-    auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
-    for (auto const & character: mCharacters)
+    int i = 0;
+    for (auto const & character: mCharacterSymbols)
     {
         mGame->output()
-            << std::setw(10) << identifiable->shortcutId(&character)
-            << std::setw(10) << drawable->symbol(&character)
+            << std::setw(10) << ++i
+            << std::setw(10) << character
             << std::endl;
     }
 
@@ -121,8 +93,9 @@ void GameStateStarting::draw ()
     mGame->output() << std::endl;
 }
 
-GameItem GameStateStarting::createCharacter (char symbol) const
+void GameStateStarting::createCharacters ()
 {
+    auto consumable = ComponentRegistry::find<ComponentConsumable>();
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
     auto health = ComponentRegistry::find<ComponentHealth>();
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
@@ -130,17 +103,6 @@ GameItem GameStateStarting::createCharacter (char symbol) const
     auto location = ComponentRegistry::find<ComponentLocation>();
 
     auto registeredCharacter = GameItemRegistry::find("character");
-    GameItem character(registeredCharacter->id());
-
-    character.addComponent(mGame, drawable->id());
-    drawable->setSymbol(&character, symbol);
-
-    character.addComponent(mGame, health->id());
-    health->setMaxHealth(&character, 60);
-    health->setHealth(&character, 60);
-
-    character.addComponent(mGame, identifiable->id());
-    identifiable->setShortcutId(&character, static_cast<int>(mCharacters.size()) + 1);
 
     int playersLayerId = 0;
     GameItem * layerItem;
@@ -150,11 +112,49 @@ GameItem GameStateStarting::createCharacter (char symbol) const
         playersLayerId = layerItem->id();
     }
 
-    character.addComponent(mGame, layer->id());
-    layer->setLayerId(&character, playersLayerId);
+    int i = 0;
+    for (auto symbol: mCharacterSymbols)
+    {
+        auto character = mGame->createItem(registeredCharacter->id());
 
-    character.addComponent(mGame, location->id());
-    // The actual location will be set later.
+        character->addComponent(mGame, drawable->id());
+        drawable->setSymbol(character, symbol);
 
-    return character;
+        character->addComponent(mGame, health->id());
+        health->setMaxHealth(character, 60);
+        health->setHealth(character, 60);
+
+        character->addComponent(mGame, identifiable->id());
+        identifiable->setShortcutId(character, ++i);
+
+        character->addComponent(mGame, layer->id());
+        layer->setLayerId(character, playersLayerId);
+
+        character->addComponent(mGame, location->id());
+        // The actual location will be set later.
+
+        GameItem * resource;
+        auto registeredGameItem = GameItemRegistry::find("gold");
+        if (registeredGameItem != nullptr)
+        {
+            resource = mGame->createItem(registeredGameItem->id());
+            resource->addComponent(mGame, identifiable->id());
+            identifiable->setCount(resource, 150);
+            character->addItem(resource->instanceId());
+        }
+
+        registeredGameItem = GameItemRegistry::find("torch");
+        if (registeredGameItem != nullptr)
+        {
+            resource = mGame->createItem(registeredGameItem->id());
+            resource->addComponent(mGame, consumable->id());
+            consumable->setPercentageRemaining(resource, 100.0);
+            character->addItem(resource->instanceId());
+
+            resource = mGame->createItem(registeredGameItem->id());
+            resource->addComponent(mGame, consumable->id());
+            consumable->setPercentageRemaining(resource, 100.0);
+            character->addItem(resource->instanceId());
+        }
+    }
 }

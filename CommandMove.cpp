@@ -63,7 +63,7 @@ std::unique_ptr<Command> CommandMove::tryCreate (
             return nullptr;
         }
 
-        if (inputString[0] < '0' || inputString[0] > '9')
+        if (inputString[0] < '1' || inputString[0] > '9')
         {
             return nullptr;
         }
@@ -80,7 +80,7 @@ std::unique_ptr<Command> CommandMove::tryCreate (
         }
         else
         {
-            if (inputString[0] < '0' || inputString[0] > '9')
+            if (inputString[0] < '1' || inputString[0] > '9')
             {
                 return nullptr;
             }

@@ -4,6 +4,20 @@
 
 std::string const ComponentTradeable::PermanentId = "tradeable";
 
+bool ComponentTradeable::isCoin (
+    GameItem const * gameItem,
+    bool defaultValue) const
+{
+    return getChainedValue<bool, bool>(gameItem, "isCoin", defaultValue);
+}
+
+void ComponentTradeable::setIsCoin (
+    GameItem * gameItem,
+    bool value)
+{
+    setDirectValue<bool, bool>(gameItem, "isCoin", value);
+}
+
 unsigned int ComponentTradeable::value (
     GameItem const * gameItem,
     unsigned int defaultValue) const

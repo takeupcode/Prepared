@@ -158,10 +158,9 @@ void GameStateExploring::operator () (
                 continue;
             }
 
-            auto discovered = findable->discovered(item);
-            auto count = identifiable->count(item);
-            if (!discovered)
+            if (item->hasComponent(findable->id()))
             {
+                unsigned int count = 0;
                 auto targetCount = findable->targetCount(item);
                 auto chanceOfFinding = findable->chanceOfFinding(item);
                 auto percent = mGame->randomPercent();
@@ -176,12 +175,10 @@ void GameStateExploring::operator () (
                         count = targetCount * percent / 100;
                     }
                 }
-                else
-                {
-                    count = 0;
-                }
                 identifiable->setCount(item, count);
+                item->removeComponent(mGame, findable->id());
             }
+            auto count = identifiable->count(item);
 
             auto itemName = identifiable->name(item);
             if (itemName.empty())
@@ -189,14 +186,23 @@ void GameStateExploring::operator () (
                 continue;
             }
 
+            auto coin = tradeable->isCoin(item);
             auto value = tradeable->value(item);
 
             display->dialogBuffer()
                 << " And found "
                 << count
-                << " " << itemName
-                << " worth " << value
-                << ((count > 1) ? " each." : ".");
+                << " " << itemName;
+
+            if (!coin)
+            {
+                display->dialogBuffer()
+                    << " worth " << value
+                    << ((count > 1) ? " each" : "");
+            }
+
+            display->dialogBuffer()
+                << ".";
         }
     }
 

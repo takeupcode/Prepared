@@ -15,6 +15,14 @@ public:
         return PermanentId;
     }
 
+    bool isCoin (
+        GameItem const * gameItem,
+        bool defaultValue = false) const;
+
+    void setIsCoin (
+        GameItem * gameItem,
+        bool value);
+
     unsigned int value (
         GameItem const * gameItem,
         unsigned int defaultValue = 0) const;

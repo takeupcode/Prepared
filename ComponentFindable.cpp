@@ -4,13 +4,6 @@
 
 std::string const ComponentFindable::PermanentId = "findable";
 
-bool ComponentFindable::discovered (
-    GameItem const * gameItem,
-    bool defaultValue) const
-{
-    return getDirectValue<bool, bool>(gameItem, "discovered", defaultValue);
-}
-
 unsigned int ComponentFindable::targetCount (
     GameItem const * gameItem,
     unsigned int defaultValue) const

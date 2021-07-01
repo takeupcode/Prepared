@@ -532,11 +532,12 @@ void Game::registerItems ()
 {
     GameItemRegistry::clear();
 
+    auto color = ComponentRegistry::find<ComponentColor>();
     auto drawable = ComponentRegistry::find<ComponentDrawable>();
     auto groupable = ComponentRegistry::find<ComponentGroupable>();
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
     auto layer = ComponentRegistry::find<ComponentLayer>();
-    auto color = ComponentRegistry::find<ComponentColor>();
+    auto tradeable = ComponentRegistry::find<ComponentTradeable>();
 
     // Layers
     auto gameItem = GameItemRegistry::add("deep water");
@@ -701,21 +702,31 @@ void Game::registerItems ()
     gameItem->addComponent(this, identifiable->id());
     identifiable->setName(gameItem, "gold");
     identifiable->setIsCountable(gameItem, true);
+    gameItem->addComponent(this, tradeable->id());
+    tradeable->setIsCoin(gameItem, true);
+    tradeable->setValue(gameItem, 10);
 
     gameItem = GameItemRegistry::add("silver");
     gameItem->addComponent(this, identifiable->id());
     identifiable->setName(gameItem, "silver");
     identifiable->setIsCountable(gameItem, true);
+    gameItem->addComponent(this, tradeable->id());
+    tradeable->setIsCoin(gameItem, true);
+    tradeable->setValue(gameItem, 1);
 
     gameItem = GameItemRegistry::add("red apple");
     gameItem->addComponent(this, identifiable->id());
     identifiable->setName(gameItem, "red apple");
+    gameItem->addComponent(this, tradeable->id());
+    tradeable->setValue(gameItem, 1);
 
     gameItem = GameItemRegistry::add("torch");
     gameItem->addComponent(this, identifiable->id());
     identifiable->setName(gameItem, "torch");
     gameItem->addComponent(this, groupable->id());
     groupable->setPropertyNames(gameItem, {"percentageRemainingEstimate"});
+    gameItem->addComponent(this, tradeable->id());
+    tradeable->setValue(gameItem, 1);
 }
 
 void Game::reset (unsigned int seed)

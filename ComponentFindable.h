@@ -15,10 +15,6 @@ public:
         return PermanentId;
     }
 
-    bool discovered (
-        GameItem const * gameItem,
-        bool defaultValue = true) const;
-
     unsigned int targetCount (
         GameItem const * gameItem,
         unsigned int defaultValue = 0) const;

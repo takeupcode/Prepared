@@ -321,6 +321,7 @@ GameStateInventory::removeFromDisplayGroupCollection (
     auto countable = identifiable->isCountable(firstGameItem);
     if (countable)
     {
+        int instanceId = firstInstanceId;
         if (count >= source[index].count)
         {
             // Take all the game item.
@@ -330,10 +331,16 @@ GameStateInventory::removeFromDisplayGroupCollection (
         else
         {
             // Take some of the game item.
+            auto clonedItem = mGame->cloneItem(instanceId);
+            if (clonedItem == nullptr)
+            {
+                return result;
+            }
             source[index].count -= count;
+            instanceId = clonedItem->instanceId();
         }
 
-        result.items.push_back(firstInstanceId);
+        result.items.push_back(instanceId);
         result.count = count;
 
         return result;
@@ -487,10 +494,10 @@ void GameStateInventory::handleDone ()
 {
     auto identifiable = ComponentRegistry::find<ComponentIdentifiable>();
 
-    mCharacter->items() = displayGroupCollectionToGameItems(
+    mCharacter->setItems(displayGroupCollectionToGameItems(
         identifiable,
-        mItemsOwned);
-    mTile->items() = displayGroupCollectionToGameItems(
+        mItemsOwned));
+    mTile->setItems(displayGroupCollectionToGameItems(
         identifiable,
-        mItemsAvailable);
+        mItemsAvailable));
 }

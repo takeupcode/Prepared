@@ -158,9 +158,9 @@ void GameStateExploring::operator () (
                 continue;
             }
 
-            auto foundCountValid = findable->foundCountValid(item);
-            auto foundCount = findable->foundCount(item);
-            if (!foundCountValid)
+            auto discovered = findable->discovered(item);
+            auto count = identifiable->count(item);
+            if (!discovered)
             {
                 auto targetCount = findable->targetCount(item);
                 auto chanceOfFinding = findable->chanceOfFinding(item);
@@ -169,18 +169,18 @@ void GameStateExploring::operator () (
                 {
                     if (targetCount == 1)
                     {
-                        foundCount = 1;
+                        count = 1;
                     }
                     else
                     {
-                        foundCount = targetCount * percent / 100;
+                        count = targetCount * percent / 100;
                     }
                 }
                 else
                 {
-                    foundCount = 0;
+                    count = 0;
                 }
-                findable->setFoundCount(item, foundCount);
+                identifiable->setCount(item, count);
             }
 
             auto itemName = identifiable->name(item);
@@ -193,10 +193,10 @@ void GameStateExploring::operator () (
 
             display->dialogBuffer()
                 << " And found "
-                << foundCount
+                << count
                 << " " << itemName
                 << " worth " << value
-                << ((foundCount > 1) ? " each." : ".");
+                << ((count > 1) ? " each." : ".");
         }
     }
 

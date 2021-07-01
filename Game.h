@@ -53,6 +53,8 @@ public:
 
     GameItem * createItem (int id);
 
+    GameItem * cloneItem (int instanceId);
+
     void eraseItem (int instanceId);
 
     GameItem * findItem (int instanceId) const;

@@ -22,7 +22,6 @@ public:
     GameItem (GameItem const & src) = delete;
     GameItem (GameItem && src) = delete;
 
-    GameItem & operator = (GameItem const & src) = delete;
     GameItem & operator = (GameItem && src) = delete;
 
     int id () const
@@ -85,6 +84,15 @@ public:
         return std::vector<int>(mItems.begin(), mItems.end());
     }
 
+    void setItems(std::vector<int> const & items)
+    {
+        mItems.clear();
+        for (auto instanceId: items)
+        {
+            mItems.insert(instanceId);
+        }
+    }
+
     bool hasTag (std::string const & tag) const
     {
         if (mTags.find(tag) != mTags.end())
@@ -135,6 +143,18 @@ private:
     : mId(id),
       mInstanceId(0)
     { }
+
+    GameItem & operator = (GameItem const & src)
+    {
+        if (this != &src)
+        {
+            mComponents = src.mComponents;
+            mProperties = src.mProperties;
+            mTags = src.mTags;
+        }
+
+        return *this;
+    }
 
     bool hasDirectComponent (int componentId) const
     {

@@ -147,6 +147,35 @@ GameItem * Game::createItem (int id)
     return result;
 }
 
+GameItem * Game::cloneItem (int instanceId)
+{
+    auto item = findItem(instanceId);
+    if (item == nullptr)
+    {
+        return nullptr;
+    }
+
+    int id = item->id();
+    auto gameItem = std::unique_ptr<GameItem>(new GameItem(id));
+    int newInstanceId = gameItem->instanceId();
+    GameItem * result = mGameItems.try_emplace(
+        newInstanceId,
+        std::move(gameItem)).
+        first->second.get();
+
+    *result = *item;
+
+    for (auto const & tag: result->tags())
+    {
+        if (mGameItemIndices.find(tag) != mGameItemIndices.end())
+        {
+            mGameItemIndicesMap[tag].insert(instanceId);
+        }
+    }
+
+    return result;
+}
+
 void Game::eraseItem (int instanceId)
 {
     auto item = findItem(instanceId);
@@ -671,10 +700,12 @@ void Game::registerItems ()
     gameItem = GameItemRegistry::add("gold");
     gameItem->addComponent(this, identifiable->id());
     identifiable->setName(gameItem, "gold");
+    identifiable->setIsCountable(gameItem, true);
 
     gameItem = GameItemRegistry::add("silver");
     gameItem->addComponent(this, identifiable->id());
     identifiable->setName(gameItem, "silver");
+    identifiable->setIsCountable(gameItem, true);
 
     gameItem = GameItemRegistry::add("red apple");
     gameItem->addComponent(this, identifiable->id());

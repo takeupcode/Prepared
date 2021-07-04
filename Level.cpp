@@ -36,6 +36,7 @@ void Level::generate ()
     auto marshTile = GameItemRegistry::find("marsh tile");
     auto iceTile = GameItemRegistry::find("ice tile");
     auto treeTile = GameItemRegistry::find("tree tile");
+    auto deadTreeTile = GameItemRegistry::find("dead tree tile");
     auto grassTile = GameItemRegistry::find("grass tile");
 
     mTiles.clear();
@@ -58,6 +59,11 @@ void Level::generate ()
                 mTiles.push_back(tile);
                 break;
 
+            case GameMap::Terrain::Dirt:
+                tile = mGame->createItem(dirtTile->id());
+                mTiles.push_back(tile);
+                break;
+
             case GameMap::Terrain::Sand:
                 tile = mGame->createItem(sandTile->id());
                 mTiles.push_back(tile);
@@ -72,6 +78,15 @@ void Level::generate ()
                 tile = mGame->createItem(dirtTile->id());
                 mTiles.push_back(tile);
                 layeredTile = mGame->createItem(treeTile->id());
+                mLayeredTiles.try_emplace(
+                    tile->instanceId(),
+                    layeredTile);
+                break;
+
+            case GameMap::Terrain::DeadTree:
+                tile = mGame->createItem(dirtTile->id());
+                mTiles.push_back(tile);
+                layeredTile = mGame->createItem(deadTreeTile->id());
                 mLayeredTiles.try_emplace(
                     tile->instanceId(),
                     layeredTile);

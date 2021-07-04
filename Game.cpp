@@ -668,6 +668,17 @@ void Game::registerItems ()
     color->setAttributesBasic(gameItem,
         {ASCIIGraphic::ForeGreen});
 
+    gameItem = GameItemRegistry::add("dead tree tile");
+    gameItem->addComponent(this, identifiable->id());
+    identifiable->setName(gameItem, "dead tree");
+    gameItem->addComponent(this, drawable->id());
+    drawable->setSymbol(gameItem, 't');
+    gameItem->addComponent(this, layer->id());
+    layer->setLayerId(gameItem, landLayerId);
+    gameItem->addComponent(this, color->id());
+    color->setAttributesBasic(gameItem,
+        {ASCIIGraphic::ForeGrey});
+
     gameItem = GameItemRegistry::add("grass tile");
     gameItem->addComponent(this, identifiable->id());
     identifiable->setName(gameItem, "grass");

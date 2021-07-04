@@ -6,12 +6,17 @@
 class GameMap
 {
 public:
+    static unsigned int constexpr MinBorderWidth = 1;
+    static unsigned int constexpr MinRadius = 25;
+
     enum class Terrain
     {
         Water,
+        Dirt,
         Sand,
         Marsh,
         Tree,
+        DeadTree,
         Grass,
         Ice
     };

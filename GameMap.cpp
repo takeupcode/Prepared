@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <random>
 #include <stack>
 #include <unordered_set>
 #include <unordered_map>
@@ -52,19 +53,10 @@ std::vector<Point2i> getStraightPath (
         endDbl.x - startDbl.x,
         endDbl.y - startDbl.y).unit();
     Point2d unitSteps;
-    if (direction.x != 0.0 && direction.y != 0.0)
-    {
-        unitSteps.x = std::sqrt(
-            1 + (direction.y / direction.x) *
-            (direction.y / direction.x));
-        unitSteps.y = std::sqrt(
-            1 + (direction.x / direction.y) *
-            (direction.x / direction.y));
-    }
-    else
+    if (direction.x == 0.0 || direction.y == 0.0)
     {
         // Either x or y is zero. This is a straight
-        // line along an axis.
+        // line along an axis. No need to do ray casting.
         Point2i next = start;
         while (true)
         {
@@ -78,6 +70,18 @@ std::vector<Point2i> getStraightPath (
                 return path;;
             }
         }
+    }
+    else
+    {
+        // We need to do DDA ray casting. The nice thing
+        // about this algorithm is that sqrt is expensive
+        // but only needs to be done twice.
+        unitSteps.x = std::sqrt(
+            1 + (direction.y / direction.x) *
+            (direction.y / direction.x));
+        unitSteps.y = std::sqrt(
+            1 + (direction.x / direction.y) *
+            (direction.x / direction.y));
     }
 
     Point2i steps;
@@ -386,16 +390,16 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
     Noise noise(seed);
     seed = noise.seed();
 
-    if (targetRadius < 25)
+    if (targetRadius < MinRadius)
     {
-        targetRadius = 25;
+        targetRadius = MinRadius;
     }
 
-    if (borderWidth == 0)
+    if (borderWidth < MinBorderWidth)
     {
         // We need at least 1 border to know for sure
         // how to identify an inside point for filling.
-        borderWidth = 1;
+        borderWidth = MinBorderWidth;
     }
 
     std::vector<std::vector<bool>> mask =
@@ -446,6 +450,75 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
 
     std::vector<std::vector<GameMap::Terrain>> result;
 
+    std::mt19937 rng;
+    rng.seed(seed);
+    std::uniform_int_distribution<int> dist(0, 100);
+
+    auto addIce = [&ofs] (std::vector<GameMap::Terrain> & row)
+    {
+        ofs << static_cast<unsigned char>(255)
+            << static_cast<unsigned char>(255)
+            << static_cast<unsigned char>(255);
+
+        row.push_back(Terrain::Ice);
+    };
+    auto addGrass = [&ofs] (std::vector<GameMap::Terrain> & row)
+    {
+        ofs << static_cast<unsigned char>(34)
+            << static_cast<unsigned char>(139)
+            << static_cast<unsigned char>(34);
+
+        row.push_back(Terrain::Grass);
+    };
+    auto addDirt = [&ofs] (std::vector<GameMap::Terrain> & row)
+    {
+        ofs << static_cast<unsigned char>(150)
+            << static_cast<unsigned char>(100)
+            << static_cast<unsigned char>(100);
+
+        row.push_back(Terrain::Dirt);
+    };
+    auto addTree = [&ofs] (std::vector<GameMap::Terrain> & row)
+    {
+        ofs << static_cast<unsigned char>(0)
+            << static_cast<unsigned char>(100)
+            << static_cast<unsigned char>(0);
+
+        row.push_back(Terrain::Tree);
+    };
+    auto addDeadTree = [&ofs] (std::vector<GameMap::Terrain> & row)
+    {
+        ofs << static_cast<unsigned char>(0)
+            << static_cast<unsigned char>(75)
+            << static_cast<unsigned char>(0);
+
+        row.push_back(Terrain::DeadTree);
+    };
+    auto addSand = [&ofs] (std::vector<GameMap::Terrain> & row)
+    {
+        ofs << static_cast<unsigned char>(157)
+            << static_cast<unsigned char>(127)
+            << static_cast<unsigned char>(97);
+
+        row.push_back(Terrain::Sand);
+    };
+    auto addMarsh = [&ofs] (std::vector<GameMap::Terrain> & row)
+    {
+        ofs << static_cast<unsigned char>(0)
+            << static_cast<unsigned char>(0)
+            << static_cast<unsigned char>(160);
+
+        row.push_back(Terrain::Marsh);
+    };
+    auto addWater = [&ofs] (std::vector<GameMap::Terrain> & row)
+    {
+        ofs << static_cast<unsigned char>(0)
+            << static_cast<unsigned char>(0)
+            << static_cast<unsigned char>(0);
+
+        row.push_back(Terrain::Water);
+    };
+
     unsigned int i = 0;
     for (unsigned int y = 0; y < height; ++y)
     {
@@ -462,53 +535,111 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
                 n = 0;
             }
 
+            auto roll = dist(rng);
             if (n >= 240)
             {
-                ofs << static_cast<unsigned char>(255)
-                    << static_cast<unsigned char>(255)
-                    << static_cast<unsigned char>(255);
-
-                resultRow.push_back(Terrain::Ice);
+                if (roll > 15)
+                {
+                    addIce(resultRow);
+                }
+                else
+                {
+                    addDirt(resultRow);
+                }
+            }
+            else if (n >= 195)
+            {
+                double range = 240 - 195;
+                double shifted = n - 195;
+                double scaled = shifted / range * 100;
+                if (scaled > roll)
+                {
+                    addIce(resultRow);
+                }
+                else
+                {
+                    if (roll > 25)
+                    {
+                        addTree(resultRow);
+                    }
+                    else
+                    {
+                        addDirt(resultRow);
+                    }
+                }
             }
             else if (n >= 150)
             {
-                ofs << static_cast<unsigned char>(0)
-                    << static_cast<unsigned char>(100)
-                    << static_cast<unsigned char>(0);
-
-                resultRow.push_back(Terrain::Tree);
+                if (roll > 25)
+                {
+                    addTree(resultRow);
+                }
+                else if (roll > 8)
+                {
+                    addGrass(resultRow);
+                }
+                else
+                {
+                    addDirt(resultRow);
+                }
+            }
+            else if (n >= 115)
+            {
+                double range = 150 - 115;
+                double shifted = n - 115;
+                double scaled = shifted / range * 100;
+                if (scaled > roll)
+                {
+                    if (roll > 25)
+                    {
+                        addTree(resultRow);
+                    }
+                    else
+                    {
+                        addDirt(resultRow);
+                    }
+                }
+                else
+                {
+                    addGrass(resultRow);
+                }
             }
             else if (n >= 75)
             {
-                ofs << static_cast<unsigned char>(34)
-                    << static_cast<unsigned char>(139)
-                    << static_cast<unsigned char>(34);
-
-                resultRow.push_back(Terrain::Grass);
+                if (roll > 15)
+                {
+                    addGrass(resultRow);
+                }
+                else
+                {
+                    addTree(resultRow);
+                }
             }
             else if (n >= 20)
             {
-                ofs << static_cast<unsigned char>(157)
-                    << static_cast<unsigned char>(127)
-                    << static_cast<unsigned char>(97);
-
-                resultRow.push_back(Terrain::Sand);
+                if (roll > 5)
+                {
+                    addSand(resultRow);
+                }
+                else
+                {
+                    addTree(resultRow);
+                }
             }
             else if (n >= 1)
             {
-                ofs << static_cast<unsigned char>(0)
-                    << static_cast<unsigned char>(0)
-                    << static_cast<unsigned char>(160);
-
-                resultRow.push_back(Terrain::Marsh);
+                if (roll > 10)
+                {
+                    addMarsh(resultRow);
+                }
+                else
+                {
+                    addDeadTree(resultRow);
+                }
             }
             else
             {
-                ofs << static_cast<unsigned char>(0)
-                    << static_cast<unsigned char>(0)
-                    << static_cast<unsigned char>(0);
-
-                resultRow.push_back(Terrain::Water);
+                addWater(resultRow);
             }
 
             ++i;

@@ -15,6 +15,8 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
+#include <iostream>
+#include <iomanip>
 
 double getNoiseRadius (
     Noise const & noise,
@@ -390,6 +392,10 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
     Noise noise(seed);
     seed = noise.seed();
 
+    std::mt19937 rng;
+    rng.seed(seed);
+    std::uniform_int_distribution<int> dist(0, 100);
+
     if (targetRadius < MinRadius)
     {
         targetRadius = MinRadius;
@@ -402,31 +408,109 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
         borderWidth = MinBorderWidth;
     }
 
-    std::vector<std::vector<bool>> mask =
-        createMask(seed, targetRadius, borderWidth, layers);
+    int roll;
+    std::vector<std::vector<bool>> mask;
+    unsigned int width {0};
+    unsigned int height {0};
+    unsigned int craterX {0};
+    unsigned int craterY {0};
 
-    const unsigned int height =
-        static_cast<unsigned int>(mask.size());
-
-    // All the rows in the mask are the same width. Use the
-    // first to get the width.
-    const unsigned int width =
-        static_cast<unsigned int>(mask[0].size());
-
-    double *noiseMap = new double[width * height];
-
-    double min = std::numeric_limits<double>::max();
-    double max = std::numeric_limits<double>::min();
-    for (unsigned int y = 0; y < height; ++y)
+    while (true)
     {
-        for (unsigned int x = 0; x < width; ++x)
+        mask = createMask(seed, targetRadius, borderWidth, layers);
+
+        height = static_cast<unsigned int>(mask.size());
+
+        // All the rows in the mask are the same width. Use the
+        // first to get the width.
+        width = static_cast<unsigned int>(mask[0].size());
+
+        // Try a few times to find a crater location that is
+        // close to the center. If we can't find a location that
+        // is on land, then recreate the mask.
+        bool foundCrater = true;
+        for (int i = 0; i < 3; ++i)
+        {
+            foundCrater = true; // Found until proven otherwise.
+            roll = dist(rng);
+            roll -= 50; // Shift the roll from (0, 100) to (-50, 50)
+            craterX = width / 2 +
+                static_cast<int>(width) * roll / 500;
+
+            roll = dist(rng);
+            roll -= 50;
+            craterY = height / 2 +
+                static_cast<int>(height) * roll / 500;
+
+            // Check all around the potential location to
+            // make sure the location isn't right on the
+            // edge of the mask.
+            unsigned int yMin = craterY - height / 10;
+            unsigned int yMax = craterY + height / 10;
+            unsigned int xMin = craterX - width / 10;
+            unsigned int xMax = craterX + width / 10;
+            for (unsigned int x = xMin; x <= xMax; ++x)
+            {
+                if (!mask[yMin][x])
+                {
+                    foundCrater = false;
+                    break;
+                }
+                if (!mask[yMax][x])
+                {
+                    foundCrater = false;
+                    break;
+                }
+            }
+            if (!foundCrater)
+            {
+                continue;
+            }
+            for (unsigned int y = yMin; y <= yMax; ++y)
+            {
+                if (!mask[y][xMin])
+                {
+                    foundCrater = false;
+                    break;
+                }
+                if (!mask[y][xMax])
+                {
+                    foundCrater = false;
+                    break;
+                }
+            }
+        }
+        if (foundCrater)
+        {
+            break;
+        }
+    }
+
+    // Generate a noise map with enough room to shift
+    // it around so that a high point can be aligned
+    // with the crater.
+    std::vector<double> noiseMap(width * height * 9);
+    for (unsigned int y = 0; y < height * 3; ++y)
+    {
+        for (unsigned int x = 0; x < width * 3; ++x)
         {
             double noiseValue = noise.generate(
                 static_cast<double>(x) / 64,
                 static_cast<double>(y) / 64,
                 layers);
-            noiseMap[y * width + x] = noiseValue;
+            noiseMap[y * width * 3 + x] = noiseValue;
+        }
+    }
 
+    double min = std::numeric_limits<double>::max();
+    double max = std::numeric_limits<double>::min();
+    unsigned int maxX {0};
+    unsigned int maxY {0};
+    for (unsigned int y = height; y < height * 5 / 3; ++y)
+    {
+        for (unsigned int x = width; x < width * 5 / 3; ++x)
+        {
+            double noiseValue = noiseMap[y * width * 3 + x];
             if (noiseValue < min)
             {
                 min = noiseValue;
@@ -434,12 +518,183 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
             if (noiseValue > max)
             {
                 max = noiseValue;
+                maxX = x;
+                maxY = y;
             }
         }
     }
 
     double minMaxShift = -min;
     double minMaxRange = max - min;
+
+    // We need two copies so that we can use the original heights
+    // when scaling the coastline.
+    std::vector<unsigned char> heightMap(width * height);
+    std::vector<unsigned char> heightMapOriginal(width * height);
+    for (unsigned int y = 0; y < height; ++y)
+    {
+        unsigned int noiseY = maxY - craterY + y;
+        for (unsigned int x = 0; x < width; ++x)
+        {
+            unsigned int noiseX = maxX - craterX + x;
+            double noiseValue = noiseMap[noiseY * width * 3 + noiseX];
+            unsigned char n = static_cast<unsigned char>(
+                (noiseValue + minMaxShift) / minMaxRange * 255
+                );
+
+            // Make sure the land itself doesn't turn into water.
+            n = std::max(n, static_cast<unsigned char>(1));
+
+            heightMap[y * width + x] = n;
+            heightMapOriginal[y * width + x] = n;
+        }
+    }
+
+    // Make a brush to be used to scale the coastline. It will
+    // look like a diamond shape since that is easier than making
+    // it a true circle. The brush size will always be odd.
+    // For example, with:
+    // SandyCoast = 4
+    // it should look like this:
+    // 0 0 0 0 1 0 0 0 0
+    // 0 0 0 1 2 1 0 0 0
+    // 0 0 1 2 3 2 1 0 0
+    // 0 1 2 3 4 3 2 1 0
+    // 1 2 3 4 5 4 3 2 1
+    // 0 1 2 3 4 3 2 1 0
+    // 0 0 1 2 3 2 1 0 0
+    // 0 0 0 1 2 1 0 0 0
+    // 0 0 0 0 1 0 0 0 0
+    // Except instead of ints, it will have scaling factors as
+    // doubles with lower scaling factors in the center.
+    std::vector<double> coastBrush(
+        (SandyCoast * 2 + 1) *
+        (SandyCoast * 2 + 1));
+    int brushCorner = SandyCoast + 1;
+    unsigned int brushIndex = 0;
+    for (unsigned int y = 0; y < SandyCoast + 1; ++y)
+    {
+        --brushCorner;
+
+        int x = 0;
+        double count = 0.0;
+        for (; x < brushCorner; ++x)
+        {
+            coastBrush[brushIndex++] = 1.0;
+        }
+        for (; x < SandyCoast + 1; ++x)
+        {
+            ++count;
+            coastBrush[brushIndex++] = 1.0 - count / (SandyCoast + 1);
+        }
+        for (; x < SandyCoast * 2 + 1 - brushCorner; ++x)
+        {
+            --count;
+            coastBrush[brushIndex++] = 1.0 - count / (SandyCoast + 1);
+        }
+        for (; x < SandyCoast * 2 + 1; ++x)
+        {
+            coastBrush[brushIndex++] = 1.0;
+        }
+    }
+    for (unsigned int y = SandyCoast + 1; y < SandyCoast * 2 + 1; ++y)
+    {
+        ++brushCorner;
+
+        int x = 0;
+        double count = 0.0;
+        for (; x < brushCorner; ++x)
+        {
+            coastBrush[brushIndex++] = 1.0;
+        }
+        for (; x < SandyCoast + 1; ++x)
+        {
+            ++count;
+            coastBrush[brushIndex++] = 1.0 - count / (SandyCoast + 1);
+        }
+        for (; x < SandyCoast * 2 + 1 - brushCorner; ++x)
+        {
+            --count;
+            coastBrush[brushIndex++] = 1.0 - count / (SandyCoast + 1);
+        }
+        for (; x < SandyCoast * 2 + 1; ++x)
+        {
+            coastBrush[brushIndex++] = 1.0;
+        }
+    }
+
+    for (unsigned int y = 0; y < height; ++y)
+    {
+        for (unsigned int x = 0; x < width; ++x)
+        {
+            if (!mask[y][x])
+            {
+                heightMap[y * width + x] = 0;
+
+                unsigned int const coast = SandyCoast;
+                unsigned int sandYMin;
+                unsigned int brushYOffset;
+                if (y < coast)
+                {
+                    sandYMin = 0;
+                    brushYOffset = coast - y;
+                }
+                else
+                {
+                    sandYMin = y - coast;
+                    brushYOffset = 0;
+                }
+                unsigned int sandYMax =
+                    y >= height - coast ? height - 1 : y + coast;
+
+                unsigned int sandXMin;
+                unsigned int brushXOffset;
+                if (x < coast)
+                {
+                    sandXMin = 0;
+                    brushXOffset = coast - x;
+                }
+                else
+                {
+                    sandXMin = x - coast;
+                    brushXOffset = 0;
+                }
+                unsigned int sandXMax =
+                    x >= width - coast ? width - 1 : x + coast;
+
+                unsigned int sandY;
+                unsigned int sandX;
+                for (sandY = sandYMin; sandY <= sandYMax; ++sandY)
+                {
+                    for (sandX = sandXMin; sandX <= sandXMax; ++sandX)
+                    {
+                        unsigned int heightIndex = sandY * width + sandX;
+                        unsigned int scaleIndex =
+                            sandY - sandYMin + brushYOffset * (coast * 2 + 1) +
+                            sandX - sandXMin + brushXOffset;
+
+                        double scale = coastBrush[scaleIndex];
+
+                        if (mask[sandY][sandX] &&
+                            heightMapOriginal[heightIndex] > 5)
+                        {
+                            unsigned char currentHeight =
+                                heightMap[heightIndex];
+                            unsigned char newHeight =
+                                heightMapOriginal[heightIndex] * scale;
+                            heightMap[heightIndex] = std::min(
+                                currentHeight,
+                                newHeight);
+                            if (heightMap[heightIndex] < 5)
+                            {
+                                heightMap[heightIndex] = 5;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     std::string fileName = "./noise";
     fileName += std::to_string(seed);
@@ -449,10 +704,6 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
     ofs << "P6\n" << width << " " << height << "\n255\n";
 
     std::vector<std::vector<GameMap::Terrain>> result;
-
-    std::mt19937 rng;
-    rng.seed(seed);
-    std::uniform_int_distribution<int> dist(0, 100);
 
     auto addIce = [&ofs] (std::vector<GameMap::Terrain> & row)
     {
@@ -502,14 +753,6 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
 
         row.push_back(Terrain::Sand);
     };
-    auto addMarsh = [&ofs] (std::vector<GameMap::Terrain> & row)
-    {
-        ofs << static_cast<unsigned char>(0)
-            << static_cast<unsigned char>(0)
-            << static_cast<unsigned char>(160);
-
-        row.push_back(Terrain::Marsh);
-    };
     auto addWater = [&ofs] (std::vector<GameMap::Terrain> & row)
     {
         ofs << static_cast<unsigned char>(0)
@@ -526,16 +769,9 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
 
         for (unsigned int x = 0; x < width; ++x)
         {
-            unsigned char n = static_cast<unsigned char>(
-                (noiseMap[i] + minMaxShift) / minMaxRange * 255
-                );
+            unsigned char n = heightMap[y * width + x];
 
-            if (!mask[y][x])
-            {
-                n = 0;
-            }
-
-            auto roll = dist(rng);
+            roll = dist(rng);
             if (n >= 240)
             {
                 if (roll > 15)
@@ -562,9 +798,13 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
                     {
                         addTree(resultRow);
                     }
-                    else
+                    else if (roll > 0)
                     {
                         addDirt(resultRow);
+                    }
+                    else
+                    {
+                        addDeadTree(resultRow);
                     }
                 }
             }
@@ -578,9 +818,13 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
                 {
                     addGrass(resultRow);
                 }
-                else
+                else if (roll > 0)
                 {
                     addDirt(resultRow);
+                }
+                else
+                {
+                    addDeadTree(resultRow);
                 }
             }
             else if (n >= 115)
@@ -590,13 +834,17 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
                 double scaled = shifted / range * 100;
                 if (scaled > roll)
                 {
-                    if (roll > 25)
+                    if (roll > 40)
                     {
                         addTree(resultRow);
                     }
-                    else
+                    else if (roll > 0)
                     {
                         addDirt(resultRow);
+                    }
+                    else
+                    {
+                        addDeadTree(resultRow);
                     }
                 }
                 else
@@ -604,33 +852,30 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
                     addGrass(resultRow);
                 }
             }
-            else if (n >= 75)
+            else if (n >= 15)
             {
                 if (roll > 15)
                 {
                     addGrass(resultRow);
                 }
-                else
+                else if (roll > 0)
                 {
                     addTree(resultRow);
                 }
+                else
+                {
+                    addDeadTree(resultRow);
+                }
             }
-            else if (n >= 20)
+            else if (n >= 1)
             {
                 if (roll > 5)
                 {
                     addSand(resultRow);
                 }
-                else
+                else if (roll > 0)
                 {
                     addTree(resultRow);
-                }
-            }
-            else if (n >= 1)
-            {
-                if (roll > 10)
-                {
-                    addMarsh(resultRow);
                 }
                 else
                 {
@@ -646,8 +891,6 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
         }
     }
     ofs.close();
-
-    delete[] noiseMap;
 
     return result;
 }

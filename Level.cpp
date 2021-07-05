@@ -33,7 +33,6 @@ void Level::generate ()
     auto deepTile = GameItemRegistry::find("deep water tile");
     auto dirtTile = GameItemRegistry::find("dirt tile");
     auto sandTile = GameItemRegistry::find("sand tile");
-    auto marshTile = GameItemRegistry::find("marsh tile");
     auto iceTile = GameItemRegistry::find("ice tile");
     auto treeTile = GameItemRegistry::find("tree tile");
     auto deadTreeTile = GameItemRegistry::find("dead tree tile");
@@ -66,11 +65,6 @@ void Level::generate ()
 
             case GameMap::Terrain::Sand:
                 tile = mGame->createItem(sandTile->id());
-                mTiles.push_back(tile);
-                break;
-
-            case GameMap::Terrain::Marsh:
-                tile = mGame->createItem(marshTile->id());
                 mTiles.push_back(tile);
                 break;
 

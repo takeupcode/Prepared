@@ -626,17 +626,6 @@ void Game::registerItems ()
     color->setAttributesBasic(gameItem,
         {ASCIIGraphic::ForeYellow});
 
-    gameItem = GameItemRegistry::add("marsh tile");
-    gameItem->addComponent(this, identifiable->id());
-    identifiable->setName(gameItem, "marsh");
-    gameItem->addComponent(this, drawable->id());
-    drawable->setSymbol(gameItem, 'm');
-    gameItem->addComponent(this, layer->id());
-    layer->setLayerId(gameItem, landLayerId);
-    gameItem->addComponent(this, color->id());
-    color->setAttributesBasic(gameItem,
-        {ASCIIGraphic::ForeBlue});
-
     gameItem = GameItemRegistry::add("rock tile");
     gameItem->addComponent(this, identifiable->id());
     identifiable->setName(gameItem, "rock");

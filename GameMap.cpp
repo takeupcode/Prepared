@@ -3,7 +3,6 @@
 #include "Lerp.h"
 #include "Math.h"
 #include "Noise.h"
-#include "Point.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,8 +14,6 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
-#include <iostream>
-#include <iomanip>
 
 double getNoiseRadius (
     Noise const & noise,
@@ -205,81 +202,155 @@ void floodFill (
     int minY,
     int maxX,
     int maxY,
-    std::vector<std::vector<bool>> & result)
+    std::vector<std::vector<double>> & result)
 {
     std::stack<Point2i> fillPoints;
     fillPoints.emplace(startX, startY);
-    result[startY][startX] = true;
+    result[startY][startX] = 1.0;
     while (!fillPoints.empty())
     {
         Point2i point = fillPoints.top();
         fillPoints.pop();
 
-        if (point.y != minY && !result[point.y - 1][point.x])
+        if (point.y != minY && result[point.y - 1][point.x] == 0.0)
         {
             fillPoints.emplace(point.x, point.y - 1);
-            result[point.y - 1][point.x] = true;
+            result[point.y - 1][point.x] = 1.0;
         }
-        if (point.y != maxY && !result[point.y + 1][point.x])
+        if (point.y != maxY && result[point.y + 1][point.x] == 0.0)
         {
             fillPoints.emplace(point.x, point.y + 1);
-            result[point.y + 1][point.x] = true;
+            result[point.y + 1][point.x] = 1.0;
         }
-        if (point.x != minX && !result[point.y][point.x - 1])
+        if (point.x != minX && result[point.y][point.x - 1] == 0.0)
         {
             fillPoints.emplace(point.x - 1, point.y);
-            result[point.y][point.x - 1] = true;
+            result[point.y][point.x - 1] = 1.0;
         }
-        if (point.x != maxX && !result[point.y][point.x + 1])
+        if (point.x != maxX && result[point.y][point.x + 1] == 0.0)
         {
             fillPoints.emplace(point.x + 1, point.y);
-            result[point.y][point.x + 1] = true;
+            result[point.y][point.x + 1] = 1.0;
         }
     }
 }
 
-std::vector<std::vector<bool>> createMask (
-    int seed,
-    unsigned int targetRadius,
-    unsigned int borderWidth,
-    unsigned int layers)
+// Make a brush to be used to scale the coastline. It will
+// look like a diamond shape since that is easier than making
+// it a true circle. The brush size will always be odd.
+// For example, with:
+// radius = 5
+// The pattern should look like this:
+// 1.0  1.0  1.0 1.0 1.0 0.8  1.0  1.0  1.0  1.0  1.0
+// 1.0  1.0  1.0 1.0 0.8 0.6  0.8  1.0  1.0  1.0  1.0
+// 1.0  1.0  1.0 0.8 0.6 0.4  0.6  0.8  1.0  1.0  1.0
+// 1.0  1.0  0.8 0.6 0.4 0.2  0.4  0.6  0.8  1.0  1.0
+// 1.0  0.8  0.6 0.4 0.2 0.0  0.2  0.4  0.6  0.8  1.0
+// 0.8  0.6  0.4 0.2 0.0 0.0  0.0  0.2  0.4  0.6  0.8
+// 1.0  0.8  0.6 0.4 0.2 0.0  0.2  0.4  0.6  0.8  1.0
+// 1.0  1.0  0.8 0.6 0.4 0.2  0.4  0.6  0.8  1.0  1.0
+// 1.0  1.0  1.0 0.8 0.6 0.4  0.6  0.8  1.0  1.0  1.0
+// 1.0  1.0  1.0 1.0 0.8 0.6  0.8  1.0  1.0  1.0  1.0
+// 1.0  1.0  1.0 1.0 1.0 0.8  1.0  1.0  1.0  1.0  1.0
+std::vector<double> createFadedBrush(unsigned int radius)
 {
-    Noise noise(seed, 1, 4);
+    std::vector<double> result(
+        (radius * 2 + 1) *
+        (radius * 2 + 1));
+    int brushCorner = radius + 1;
+    unsigned int brushIndex = 0;
+    for (unsigned int y = 0; y < radius + 1; ++y)
+    {
+        --brushCorner;
+
+        int x = 0;
+        double count = 0.0;
+        for (; x < brushCorner; ++x)
+        {
+            result[brushIndex++] = 1.0;
+        }
+        for (; x < radius + 1; ++x)
+        {
+            ++count;
+            result[brushIndex++] = 1.0 - count / (radius + 1);
+        }
+        for (; x < radius * 2 + 1 - brushCorner; ++x)
+        {
+            --count;
+            result[brushIndex++] = 1.0 - count / (radius + 1);
+        }
+        for (; x < radius * 2 + 1; ++x)
+        {
+            result[brushIndex++] = 1.0;
+        }
+    }
+    for (unsigned int y = radius + 1; y < radius * 2 + 1; ++y)
+    {
+        ++brushCorner;
+
+        int x = 0;
+        double count = 0.0;
+        for (; x < brushCorner; ++x)
+        {
+            result[brushIndex++] = 1.0;
+        }
+        for (; x < radius + 1; ++x)
+        {
+            ++count;
+            result[brushIndex++] = 1.0 - count / (radius + 1);
+        }
+        for (; x < radius * 2 + 1 - brushCorner; ++x)
+        {
+            --count;
+            result[brushIndex++] = 1.0 - count / (radius + 1);
+        }
+        for (; x < radius * 2 + 1; ++x)
+        {
+            result[brushIndex++] = 1.0;
+        }
+    }
+
+    return result;
+}
+
+std::vector<std::vector<double>> GameMap::createMask ()
+{
+    Noise noise(mSeed, 1, 4);
 
     int minX = std::numeric_limits<int>::max();
     int maxX = std::numeric_limits<int>::min();
     int minY = std::numeric_limits<int>::max();
     int maxY = std::numeric_limits<int>::min();
 
-    auto path = getPath (
+    mPath = getPath (
         noise,
-        targetRadius,
-        layers);
+        mTargetRadius,
+        mLayers);
 
-    for (auto const & point: path)
+    for (auto const & point: mPath)
     {
         adjustMinMaxValues(point, minX, maxX, minY, maxY);
     }
 
-    int width = maxX - minX + 1 + borderWidth * 2;
-    int height = maxY - minY + 1 + borderWidth * 2;
+    int width = maxX - minX + 1 + mBorderWidth * 2;
+    int height = maxY - minY + 1 + mBorderWidth * 2;
 
-    std::vector<std::vector<bool>> result;
+    std::vector<std::vector<double>> result;
     for (int y = 0; y < height; ++y)
     {
         auto & resultRow = result.emplace_back();
-        resultRow = std::vector<bool>(width);
+        resultRow = std::vector<double>(width);
     }
 
-    for (auto const & point: path)
+    for (auto & point: mPath)
     {
-        int resultY = point.y - minY + borderWidth;
-        int resultX = point.x - minX + borderWidth;
-        result[resultY][resultX] = true;
+        point.y = point.y - minY + mBorderWidth;
+        point.x = point.x - minX + mBorderWidth;
+        result[point.y][point.x] = 1.0;
     }
 
     std::string fileName = "./outline";
-    fileName += std::to_string(seed);
+    fileName += std::to_string(mSeed);
     fileName += ".ppm";
     std::ofstream ofs;
     ofs.open(fileName, std::ios::out | std::ios::binary | std::ios::trunc);
@@ -288,11 +359,8 @@ std::vector<std::vector<bool>> createMask (
     {
         for (int x = 0; x < width; ++x)
         {
-            unsigned char n = 0;
-            if (result[y][x])
-            {
-                n = 255;
-            }
+            unsigned char n = 255;
+            n *= result[y][x];
             ofs << n << n << n;
         }
     }
@@ -309,7 +377,7 @@ std::vector<std::vector<bool>> createMask (
     int outsideStartFillY = height / 2;
     int outsideFillMargin = 5;
     int outsideFillMinY = outsideStartFillY - outsideFillMargin;
-    std::vector<std::vector<bool>> outsideResult;
+    std::vector<std::vector<double>> outsideResult;
     for (int y = 0; y < (outsideFillMargin * 2 + 1); ++y)
     {
         auto & outsideRow = outsideResult.emplace_back();
@@ -331,21 +399,21 @@ std::vector<std::vector<bool>> createMask (
     while (true)
     {
         ++startFillX;
-        if (!foundEdge && result[startFillY][startFillX])
+        if (!foundEdge && result[startFillY][startFillX] == 1.0)
         {
             // We found the outline edge. Keep looking
             // until we find an inside point that is
-            // false;
+            // zero;
             foundEdge = true;
         }
-        else if (foundEdge && !result[startFillY][startFillX])
+        else if (foundEdge && result[startFillY][startFillX] == 0.0)
         {
             // Stop looking for an inside point only when
             // we are sure it really is inside. Check the
             // point against the known outside points to
             // be sure.
             int outsideY = startFillY - outsideFillMinY;
-            if (!outsideResult[outsideY][startFillX])
+            if (outsideResult[outsideY][startFillX] == 0.0)
             {
                 break;
             }
@@ -360,8 +428,27 @@ std::vector<std::vector<bool>> createMask (
         height - 1,
         result);
 
+    // Fade the edges of the mask before returning it.
+    int coastBrushRadius = mBorderWidth * 4 / 5;
+    auto coastBrush = createFadedBrush(coastBrushRadius);
+    for (auto const & point: mPath)
+    {
+        unsigned int coastBrushIndex {0};
+        for (int y = -coastBrushRadius; y <= coastBrushRadius; ++y)
+        {
+            for (int x = -coastBrushRadius; x <= coastBrushRadius; ++x)
+            {
+                double currentValue = result[point.y + y][point.x + x];
+                double newValue = coastBrush[coastBrushIndex++];
+                result[point.y + y][point.x + x] = std::min(
+                    currentValue,
+                    newValue);
+            }
+        }
+    }
+
     fileName = "./mask";
-    fileName += std::to_string(seed);
+    fileName += std::to_string(mSeed);
     fileName += ".ppm";
     std::ofstream ofs2;
     ofs2.open(fileName, std::ios::out | std::ios::binary | std::ios::trunc);
@@ -370,11 +457,8 @@ std::vector<std::vector<bool>> createMask (
     {
         for (int x = 0; x < width; ++x)
         {
-            unsigned char n = 0;
-            if (result[y][x])
-            {
-                n = 255;
-            }
+            unsigned char n = 255;
+            n *= result[y][x];
             ofs2 << n << n << n;
         }
     }
@@ -389,13 +473,6 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
     unsigned int borderWidth,
     unsigned int layers)
 {
-    Noise noise(seed);
-    seed = noise.seed();
-
-    std::mt19937 rng;
-    rng.seed(seed);
-    std::uniform_int_distribution<int> dist(0, 100);
-
     if (targetRadius < MinRadius)
     {
         targetRadius = MinRadius;
@@ -405,11 +482,25 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
     {
         // We need at least 1 border to know for sure
         // how to identify an inside point for filling.
+        // But the minimum is higher because we also use
+        // the border width to determine how much to fade
+        // the edges. The fade amount will be scaled based
+        // on the border width.
         borderWidth = MinBorderWidth;
     }
 
+    Noise noise(seed);
+    mSeed = noise.seed();
+    mTargetRadius = targetRadius;
+    mBorderWidth = borderWidth;
+    mLayers = layers;
+
+    std::mt19937 rng;
+    rng.seed(mSeed);
+    std::uniform_int_distribution<int> dist(0, 100);
+
     int roll;
-    std::vector<std::vector<bool>> mask;
+    std::vector<std::vector<double>> mask;
     unsigned int width {0};
     unsigned int height {0};
     unsigned int craterX {0};
@@ -417,7 +508,7 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
 
     while (true)
     {
-        mask = createMask(seed, targetRadius, borderWidth, layers);
+        mask = createMask();
 
         height = static_cast<unsigned int>(mask.size());
 
@@ -451,12 +542,12 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
             unsigned int xMax = craterX + width / 10;
             for (unsigned int x = xMin; x <= xMax; ++x)
             {
-                if (!mask[yMin][x])
+                if (mask[yMin][x] == 0.0)
                 {
                     foundCrater = false;
                     break;
                 }
-                if (!mask[yMax][x])
+                if (mask[yMax][x] == 0.0)
                 {
                     foundCrater = false;
                     break;
@@ -468,12 +559,12 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
             }
             for (unsigned int y = yMin; y <= yMax; ++y)
             {
-                if (!mask[y][xMin])
+                if (mask[y][xMin] == 0.0)
                 {
                     foundCrater = false;
                     break;
                 }
-                if (!mask[y][xMax])
+                if (mask[y][xMax] == 0.0)
                 {
                     foundCrater = false;
                     break;
@@ -527,177 +618,33 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
     double minMaxShift = -min;
     double minMaxRange = max - min;
 
-    // We need two copies so that we can use the original heights
-    // when scaling the coastline.
     std::vector<unsigned char> heightMap(width * height);
-    std::vector<unsigned char> heightMapOriginal(width * height);
     for (unsigned int y = 0; y < height; ++y)
     {
         unsigned int noiseY = maxY - craterY + y;
         for (unsigned int x = 0; x < width; ++x)
         {
-            unsigned int noiseX = maxX - craterX + x;
-            double noiseValue = noiseMap[noiseY * width * 3 + noiseX];
-            unsigned char n = static_cast<unsigned char>(
-                (noiseValue + minMaxShift) / minMaxRange * 255
-                );
+            unsigned char n {0};
+            if (mask[y][x] != 0)
+            {
+                unsigned int noiseX = maxX - craterX + x;
+                double noiseValue = noiseMap[noiseY * width * 3 + noiseX];
+                n = static_cast<unsigned char>(
+                    (noiseValue + minMaxShift) / minMaxRange * 255
+                    );
 
-            // Make sure the land itself doesn't turn into water.
-            n = std::max(n, static_cast<unsigned char>(1));
+                n *= mask[y][x];
+
+                // Make sure the land itself doesn't turn into water.
+                n = std::max(n, static_cast<unsigned char>(1));
+            }
 
             heightMap[y * width + x] = n;
-            heightMapOriginal[y * width + x] = n;
-        }
-    }
-
-    // Make a brush to be used to scale the coastline. It will
-    // look like a diamond shape since that is easier than making
-    // it a true circle. The brush size will always be odd.
-    // For example, with:
-    // SandyCoast = 4
-    // it should look like this:
-    // 0 0 0 0 1 0 0 0 0
-    // 0 0 0 1 2 1 0 0 0
-    // 0 0 1 2 3 2 1 0 0
-    // 0 1 2 3 4 3 2 1 0
-    // 1 2 3 4 5 4 3 2 1
-    // 0 1 2 3 4 3 2 1 0
-    // 0 0 1 2 3 2 1 0 0
-    // 0 0 0 1 2 1 0 0 0
-    // 0 0 0 0 1 0 0 0 0
-    // Except instead of ints, it will have scaling factors as
-    // doubles with lower scaling factors in the center.
-    std::vector<double> coastBrush(
-        (SandyCoast * 2 + 1) *
-        (SandyCoast * 2 + 1));
-    int brushCorner = SandyCoast + 1;
-    unsigned int brushIndex = 0;
-    for (unsigned int y = 0; y < SandyCoast + 1; ++y)
-    {
-        --brushCorner;
-
-        int x = 0;
-        double count = 0.0;
-        for (; x < brushCorner; ++x)
-        {
-            coastBrush[brushIndex++] = 1.0;
-        }
-        for (; x < SandyCoast + 1; ++x)
-        {
-            ++count;
-            coastBrush[brushIndex++] = 1.0 - count / (SandyCoast + 1);
-        }
-        for (; x < SandyCoast * 2 + 1 - brushCorner; ++x)
-        {
-            --count;
-            coastBrush[brushIndex++] = 1.0 - count / (SandyCoast + 1);
-        }
-        for (; x < SandyCoast * 2 + 1; ++x)
-        {
-            coastBrush[brushIndex++] = 1.0;
-        }
-    }
-    for (unsigned int y = SandyCoast + 1; y < SandyCoast * 2 + 1; ++y)
-    {
-        ++brushCorner;
-
-        int x = 0;
-        double count = 0.0;
-        for (; x < brushCorner; ++x)
-        {
-            coastBrush[brushIndex++] = 1.0;
-        }
-        for (; x < SandyCoast + 1; ++x)
-        {
-            ++count;
-            coastBrush[brushIndex++] = 1.0 - count / (SandyCoast + 1);
-        }
-        for (; x < SandyCoast * 2 + 1 - brushCorner; ++x)
-        {
-            --count;
-            coastBrush[brushIndex++] = 1.0 - count / (SandyCoast + 1);
-        }
-        for (; x < SandyCoast * 2 + 1; ++x)
-        {
-            coastBrush[brushIndex++] = 1.0;
-        }
-    }
-
-    for (unsigned int y = 0; y < height; ++y)
-    {
-        for (unsigned int x = 0; x < width; ++x)
-        {
-            if (!mask[y][x])
-            {
-                heightMap[y * width + x] = 0;
-
-                unsigned int const coast = SandyCoast;
-                unsigned int sandYMin;
-                unsigned int brushYOffset;
-                if (y < coast)
-                {
-                    sandYMin = 0;
-                    brushYOffset = coast - y;
-                }
-                else
-                {
-                    sandYMin = y - coast;
-                    brushYOffset = 0;
-                }
-                unsigned int sandYMax =
-                    y >= height - coast ? height - 1 : y + coast;
-
-                unsigned int sandXMin;
-                unsigned int brushXOffset;
-                if (x < coast)
-                {
-                    sandXMin = 0;
-                    brushXOffset = coast - x;
-                }
-                else
-                {
-                    sandXMin = x - coast;
-                    brushXOffset = 0;
-                }
-                unsigned int sandXMax =
-                    x >= width - coast ? width - 1 : x + coast;
-
-                unsigned int sandY;
-                unsigned int sandX;
-                for (sandY = sandYMin; sandY <= sandYMax; ++sandY)
-                {
-                    for (sandX = sandXMin; sandX <= sandXMax; ++sandX)
-                    {
-                        unsigned int heightIndex = sandY * width + sandX;
-                        unsigned int scaleIndex =
-                            sandY - sandYMin + brushYOffset * (coast * 2 + 1) +
-                            sandX - sandXMin + brushXOffset;
-
-                        double scale = coastBrush[scaleIndex];
-
-                        if (mask[sandY][sandX] &&
-                            heightMapOriginal[heightIndex] > 5)
-                        {
-                            unsigned char currentHeight =
-                                heightMap[heightIndex];
-                            unsigned char newHeight =
-                                heightMapOriginal[heightIndex] * scale;
-                            heightMap[heightIndex] = std::min(
-                                currentHeight,
-                                newHeight);
-                            if (heightMap[heightIndex] < 5)
-                            {
-                                heightMap[heightIndex] = 5;
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 
     std::string fileName = "./noise";
-    fileName += std::to_string(seed);
+    fileName += std::to_string(mSeed);
     fileName += ".ppm";
     std::ofstream ofs;
     ofs.open(fileName, std::ios::out | std::ios::binary | std::ios::trunc);

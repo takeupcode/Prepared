@@ -1,6 +1,8 @@
 #ifndef GAMEMAP_H
 #define GAMEMAP_H
 
+#include "Point.h"
+
 #include <vector>
 
 class GameMap
@@ -8,7 +10,6 @@ class GameMap
 public:
     static unsigned int constexpr MinBorderWidth = 25;
     static unsigned int constexpr MinRadius = 25;
-    static unsigned int constexpr SandyCoast = 20;
 
     enum class Terrain
     {
@@ -21,11 +22,20 @@ public:
         Ice
     };
 
-    static std::vector<std::vector<Terrain>> create (
+    std::vector<std::vector<Terrain>> create (
         int seed = 0,
         unsigned int targetRadius = 100,
         unsigned int borderWidth = MinBorderWidth,
         unsigned int layers = 2);
+
+private:
+    std::vector<std::vector<double>> createMask ();
+
+    int mSeed = 0;
+    unsigned int mTargetRadius = 0;
+    unsigned int mBorderWidth = 0;
+    unsigned int mLayers = 0;
+    std::vector<Point2i> mPath;
 };
 
 #endif // GAMEMAP_H

@@ -28,7 +28,8 @@ Level::Level (Game * game, int seed)
 
 void Level::generate ()
 {
-    auto terrain = GameMap::create();
+    GameMap gameMap;
+    auto terrain = gameMap.create();
 
     auto deepTile = GameItemRegistry::find("deep water tile");
     auto dirtTile = GameItemRegistry::find("dirt tile");

@@ -18,6 +18,7 @@
 double getNoiseRadius (
     Noise const & noise,
     unsigned int targetRadius,
+    unsigned int minRadius,
     unsigned int layers,
     double degrees)
 {
@@ -28,6 +29,12 @@ double getNoiseRadius (
         degrees / cycleDivisor,
         layers,
         360.0 / cycleDivisor);
+
+    // Make sure that the island always has land at the center.
+    if (noiseValue < minRadius)
+    {
+        noiseValue = minRadius;
+    }
 
     return noiseValue;
 }
@@ -135,14 +142,16 @@ std::vector<Point2i> getStraightPath (
 std::vector<Point2i> getPath (
     Noise const & noise,
     unsigned int targetRadius,
+    unsigned int minRadius,
     unsigned int layers)
 {
     std::vector<Point2i> path;
 
     double degrees = 0.0;
-    auto radius = getNoiseRadius (
+    auto radius = getNoiseRadius(
         noise,
         targetRadius,
+        minRadius,
         layers,
         degrees);
     auto point = artop(degrees, radius);
@@ -150,9 +159,10 @@ std::vector<Point2i> getPath (
 
     for (degrees = 1.0; degrees <= 360.0; ++degrees)
     {
-        radius = getNoiseRadius (
+        radius = getNoiseRadius(
             noise,
             targetRadius,
+            minRadius,
             layers,
             degrees);
         point = artop(degrees, radius);
@@ -196,124 +206,120 @@ void adjustMinMaxValues (
 }
 
 void floodFill (
+    int searchValue,
+    int fillValue,
     int startX,
     int startY,
     int minX,
     int minY,
     int maxX,
     int maxY,
-    std::vector<std::vector<double>> & result)
+    std::vector<std::vector<int>> & result)
 {
     std::stack<Point2i> fillPoints;
     fillPoints.emplace(startX, startY);
-    result[startY][startX] = 1.0;
+    result[startY][startX] = fillValue;
     while (!fillPoints.empty())
     {
         Point2i point = fillPoints.top();
         fillPoints.pop();
 
-        if (point.y != minY && result[point.y - 1][point.x] == 0.0)
+        if (point.y != minY && result[point.y - 1][point.x] == searchValue)
         {
             fillPoints.emplace(point.x, point.y - 1);
-            result[point.y - 1][point.x] = 1.0;
+            result[point.y - 1][point.x] = fillValue;
         }
-        if (point.y != maxY && result[point.y + 1][point.x] == 0.0)
+        if (point.y != maxY && result[point.y + 1][point.x] == searchValue)
         {
             fillPoints.emplace(point.x, point.y + 1);
-            result[point.y + 1][point.x] = 1.0;
+            result[point.y + 1][point.x] = fillValue;
         }
-        if (point.x != minX && result[point.y][point.x - 1] == 0.0)
+        if (point.x != minX && result[point.y][point.x - 1] == searchValue)
         {
             fillPoints.emplace(point.x - 1, point.y);
-            result[point.y][point.x - 1] = 1.0;
+            result[point.y][point.x - 1] = fillValue;
         }
-        if (point.x != maxX && result[point.y][point.x + 1] == 0.0)
+        if (point.x != maxX && result[point.y][point.x + 1] == searchValue)
         {
             fillPoints.emplace(point.x + 1, point.y);
-            result[point.y][point.x + 1] = 1.0;
+            result[point.y][point.x + 1] = fillValue;
         }
     }
 }
 
-// Make a brush to be used to scale the coastline. It will
-// look like a diamond shape since that is easier than making
-// it a true circle. The brush size will always be odd.
-// For example, with:
-// radius = 5
-// The pattern should look like this:
-// 1.0  1.0  1.0 1.0 1.0 0.8  1.0  1.0  1.0  1.0  1.0
-// 1.0  1.0  1.0 1.0 0.8 0.6  0.8  1.0  1.0  1.0  1.0
-// 1.0  1.0  1.0 0.8 0.6 0.4  0.6  0.8  1.0  1.0  1.0
-// 1.0  1.0  0.8 0.6 0.4 0.2  0.4  0.6  0.8  1.0  1.0
-// 1.0  0.8  0.6 0.4 0.2 0.0  0.2  0.4  0.6  0.8  1.0
-// 0.8  0.6  0.4 0.2 0.0 0.0  0.0  0.2  0.4  0.6  0.8
-// 1.0  0.8  0.6 0.4 0.2 0.0  0.2  0.4  0.6  0.8  1.0
-// 1.0  1.0  0.8 0.6 0.4 0.2  0.4  0.6  0.8  1.0  1.0
-// 1.0  1.0  1.0 0.8 0.6 0.4  0.6  0.8  1.0  1.0  1.0
-// 1.0  1.0  1.0 1.0 0.8 0.6  0.8  1.0  1.0  1.0  1.0
-// 1.0  1.0  1.0 1.0 1.0 0.8  1.0  1.0  1.0  1.0  1.0
-std::vector<double> createFadedBrush(unsigned int radius)
+void pathFill (
+    int searchValue,
+    int fillValue,
+    int startX,
+    int startY,
+    std::vector<std::vector<int>> & result)
 {
-    std::vector<double> result(
-        (radius * 2 + 1) *
-        (radius * 2 + 1));
-    int brushCorner = radius + 1;
-    unsigned int brushIndex = 0;
-    for (unsigned int y = 0; y < radius + 1; ++y)
+    // Scan out in a straight line until the searchValue is found.
+    while (true)
     {
-        --brushCorner;
+        if (result[startY][startX + 1] == searchValue)
+        {
+            break;
+        }
 
-        int x = 0;
-        double count = 0.0;
-        for (; x < brushCorner; ++x)
-        {
-            result[brushIndex++] = 1.0;
-        }
-        for (; x < radius + 1; ++x)
-        {
-            ++count;
-            result[brushIndex++] = 1.0 - count / (radius + 1);
-        }
-        for (; x < radius * 2 + 1 - brushCorner; ++x)
-        {
-            --count;
-            result[brushIndex++] = 1.0 - count / (radius + 1);
-        }
-        for (; x < radius * 2 + 1; ++x)
-        {
-            result[brushIndex++] = 1.0;
-        }
-    }
-    for (unsigned int y = radius + 1; y < radius * 2 + 1; ++y)
-    {
-        ++brushCorner;
-
-        int x = 0;
-        double count = 0.0;
-        for (; x < brushCorner; ++x)
-        {
-            result[brushIndex++] = 1.0;
-        }
-        for (; x < radius + 1; ++x)
-        {
-            ++count;
-            result[brushIndex++] = 1.0 - count / (radius + 1);
-        }
-        for (; x < radius * 2 + 1 - brushCorner; ++x)
-        {
-            --count;
-            result[brushIndex++] = 1.0 - count / (radius + 1);
-        }
-        for (; x < radius * 2 + 1; ++x)
-        {
-            result[brushIndex++] = 1.0;
-        }
+        ++startX;
     }
 
-    return result;
+    auto isNearSearchValue = [searchValue, &result] (int x, int y)
+    {
+        for (int nearY = y - 1; nearY <= y + 1; ++nearY)
+        {
+            for (int nearX = x - 1; nearX <= x + 1; ++nearX)
+            {
+                if (result[nearY][nearX] == searchValue)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    std::stack<Point2i> fillPoints;
+    fillPoints.emplace(startX, startY);
+    result[startY][startX] = fillValue;
+    while (!fillPoints.empty())
+    {
+        Point2i point = fillPoints.top();
+        fillPoints.pop();
+
+        if (result[point.y - 1][point.x] != searchValue &&
+            result[point.y - 1][point.x] != fillValue &&
+            isNearSearchValue(point.x, point.y - 1))
+        {
+            fillPoints.emplace(point.x, point.y - 1);
+            result[point.y - 1][point.x] = fillValue;
+        }
+        if (result[point.y + 1][point.x] != searchValue &&
+            result[point.y + 1][point.x] != fillValue &&
+            isNearSearchValue(point.x, point.y + 1))
+        {
+            fillPoints.emplace(point.x, point.y + 1);
+            result[point.y + 1][point.x] = fillValue;
+        }
+        if (result[point.y][point.x - 1] != searchValue &&
+            result[point.y][point.x - 1] != fillValue &&
+            isNearSearchValue(point.x - 1, point.y))
+        {
+            fillPoints.emplace(point.x - 1, point.y);
+            result[point.y][point.x - 1] = fillValue;
+        }
+        if (result[point.y][point.x + 1] != searchValue &&
+            result[point.y][point.x + 1] != fillValue &&
+            isNearSearchValue(point.x + 1, point.y))
+        {
+            fillPoints.emplace(point.x + 1, point.y);
+            result[point.y][point.x + 1] = fillValue;
+        }
+    }
 }
 
-std::vector<std::vector<double>> GameMap::createMask ()
+std::vector<std::vector<int>> GameMap::createMask ()
 {
     Noise noise(mSeed, 1, 4);
 
@@ -322,9 +328,10 @@ std::vector<std::vector<double>> GameMap::createMask ()
     int minY = std::numeric_limits<int>::max();
     int maxY = std::numeric_limits<int>::min();
 
-    mPath = getPath (
+    mPath = getPath(
         noise,
         mTargetRadius,
+        MinRadius,
         mLayers);
 
     for (auto const & point: mPath)
@@ -335,18 +342,19 @@ std::vector<std::vector<double>> GameMap::createMask ()
     int width = maxX - minX + 1 + mBorderWidth * 2;
     int height = maxY - minY + 1 + mBorderWidth * 2;
 
-    std::vector<std::vector<double>> result;
+    std::vector<std::vector<int>> result;
     for (int y = 0; y < height; ++y)
     {
         auto & resultRow = result.emplace_back();
-        resultRow = std::vector<double>(width);
+        // Start out with all zeroes.
+        resultRow = std::vector<int>(width);
     }
 
     for (auto & point: mPath)
     {
         point.y = point.y - minY + mBorderWidth;
         point.x = point.x - minX + mBorderWidth;
-        result[point.y][point.x] = 1.0;
+        result[point.y][point.x] = 1;
     }
 
     std::string fileName = "./outline";
@@ -366,85 +374,32 @@ std::vector<std::vector<double>> GameMap::createMask ()
     }
     ofs.close();
 
-    // Flood fill the outlined bools from a known point
-    // inside the outline. This is not as easy as it seems.
-    // The only points we know for certain are the outside
-    // and the border points. We can first flood fill a
-    // portion of the outside. Don't need to do the entire
-    // border. And then use those identified outside points
-    // to make sure that we don't accidentally select an
-    // outside point when trying to flood fill the inside.
-    int outsideStartFillY = height / 2;
-    int outsideFillMargin = 5;
-    int outsideFillMinY = outsideStartFillY - outsideFillMargin;
-    std::vector<std::vector<double>> outsideResult;
-    for (int y = 0; y < (outsideFillMargin * 2 + 1); ++y)
-    {
-        auto & outsideRow = outsideResult.emplace_back();
-        outsideRow = result[outsideFillMinY + y];
-    }
-    floodFill (
+    // Flood fill the outline from the center which must
+    // be inside the outline because of the minimum radius.
+    // We use -1 to represent land.
+    floodFill(
         0,
-        0,
-        0,
-        0,
-        width - 1,
-        outsideFillMargin * 2,
-        outsideResult);
-
-    std::stack<Point2i> fillPoints;
-    int startFillY = height / 2;
-    int startFillX = -1;
-    bool foundEdge = false;
-    while (true)
-    {
-        ++startFillX;
-        if (!foundEdge && result[startFillY][startFillX] == 1.0)
-        {
-            // We found the outline edge. Keep looking
-            // until we find an inside point that is
-            // zero;
-            foundEdge = true;
-        }
-        else if (foundEdge && result[startFillY][startFillX] == 0.0)
-        {
-            // Stop looking for an inside point only when
-            // we are sure it really is inside. Check the
-            // point against the known outside points to
-            // be sure.
-            int outsideY = startFillY - outsideFillMinY;
-            if (outsideResult[outsideY][startFillX] == 0.0)
-            {
-                break;
-            }
-        }
-    }
-    floodFill (
-        startFillX,
-        startFillY,
+        -1,
+        width / 2,
+        height / 2,
         0,
         0,
         width - 1,
         height - 1,
         result);
 
-    // Fade the edges of the mask before returning it.
-    int coastBrushRadius = mBorderWidth * 4 / 5;
-    auto coastBrush = createFadedBrush(coastBrushRadius);
-    for (auto const & point: mPath)
+    // Fade the edges of the mask before returning it. We
+    // do this by filling in extra paths inside the existing
+    // outline. Each additional path uses an incremental
+    // value.
+    for (unsigned int fade = 2; fade <= mFadeWidth; ++fade)
     {
-        unsigned int coastBrushIndex {0};
-        for (int y = -coastBrushRadius; y <= coastBrushRadius; ++y)
-        {
-            for (int x = -coastBrushRadius; x <= coastBrushRadius; ++x)
-            {
-                double currentValue = result[point.y + y][point.x + x];
-                double newValue = coastBrush[coastBrushIndex++];
-                result[point.y + y][point.x + x] = std::min(
-                    currentValue,
-                    newValue);
-            }
-        }
+        pathFill(
+            fade - 1,
+            fade,
+            width / 2,
+            height / 2,
+            result);
     }
 
     fileName = "./mask";
@@ -458,7 +413,15 @@ std::vector<std::vector<double>> GameMap::createMask ()
         for (int x = 0; x < width; ++x)
         {
             unsigned char n = 255;
-            n *= result[y][x];
+            int mask = result[y][x];
+            if (mask == 0)
+            {
+                n = 0;
+            }
+            else if (mask != -1)
+            {
+                n *= (static_cast<double>(mask) / mFadeWidth);
+            }
             ofs2 << n << n << n;
         }
     }
@@ -493,6 +456,7 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
     mSeed = noise.seed();
     mTargetRadius = targetRadius;
     mBorderWidth = borderWidth;
+    mFadeWidth = borderWidth * 4 / 5;
     mLayers = layers;
 
     std::mt19937 rng;
@@ -500,7 +464,7 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
     std::uniform_int_distribution<int> dist(0, 100);
 
     int roll;
-    std::vector<std::vector<double>> mask;
+    std::vector<std::vector<int>> mask;
     unsigned int width {0};
     unsigned int height {0};
     unsigned int craterX {0};
@@ -542,12 +506,12 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
             unsigned int xMax = craterX + width / 10;
             for (unsigned int x = xMin; x <= xMax; ++x)
             {
-                if (mask[yMin][x] == 0.0)
+                if (mask[yMin][x] != -1)
                 {
                     foundCrater = false;
                     break;
                 }
-                if (mask[yMax][x] == 0.0)
+                if (mask[yMax][x] != -1)
                 {
                     foundCrater = false;
                     break;
@@ -559,12 +523,12 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
             }
             for (unsigned int y = yMin; y <= yMax; ++y)
             {
-                if (mask[y][xMin] == 0.0)
+                if (mask[y][xMin] != -1)
                 {
                     foundCrater = false;
                     break;
                 }
-                if (mask[y][xMax] == 0.0)
+                if (mask[y][xMax] != -1)
                 {
                     foundCrater = false;
                     break;
@@ -633,7 +597,10 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
                     (noiseValue + minMaxShift) / minMaxRange * 255
                     );
 
-                n *= mask[y][x];
+                if (mask[y][x] != -1)
+                {
+                    n *= static_cast<double>(mask[y][x] / mFadeWidth);
+                }
 
                 // Make sure the land itself doesn't turn into water.
                 n = std::max(n, static_cast<unsigned char>(1));

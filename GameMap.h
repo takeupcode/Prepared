@@ -29,11 +29,12 @@ public:
         unsigned int layers = 2);
 
 private:
-    std::vector<std::vector<double>> createMask ();
+    std::vector<std::vector<int>> createMask ();
 
     int mSeed = 0;
     unsigned int mTargetRadius = 0;
     unsigned int mBorderWidth = 0;
+    unsigned int mFadeWidth = 0;
     unsigned int mLayers = 0;
     std::vector<Point2i> mPath;
 };

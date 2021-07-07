@@ -597,13 +597,14 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
                     (noiseValue + minMaxShift) / minMaxRange * 255
                     );
 
+                // Make sure the land itself doesn't turn into water
+                // or sand. Sand will only be allowed at the coast.
+                n = std::max(n, static_cast<unsigned char>(15));
+
                 if (mask[y][x] != -1)
                 {
-                    n *= static_cast<double>(mask[y][x] / mFadeWidth);
+                    n *= (static_cast<double>(mask[y][x]) / mFadeWidth);
                 }
-
-                // Make sure the land itself doesn't turn into water.
-                n = std::max(n, static_cast<unsigned char>(1));
             }
 
             heightMap[y * width + x] = n;

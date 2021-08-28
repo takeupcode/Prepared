@@ -1,8 +1,10 @@
 #include "GameMap.h"
 
+#include "Geology.h"
 #include "Lerp.h"
 #include "Math.h"
 #include "Noise.h"
+#include "Overloaded.h"
 
 #include <algorithm>
 #include <cmath>
@@ -319,86 +321,6 @@ void pathFill (
     }
 }
 
-std::vector<Point2i> calculateFlow (
-    int startX,
-    int startY,
-    unsigned int width,
-    std::vector<unsigned char> const & heightMap)
-{
-    unsigned char elevation {0};
-    auto highNeighbor = [&elevation, &heightMap, width] (int x, int y)
-    {
-        Point2i point(x, y);
-        unsigned char tempElevation = elevation;
-        if (heightMap[(y - 1) * width + x] > tempElevation)
-        {
-            tempElevation = heightMap[(y - 1) * width + x];
-            point.x = x;
-            point.y = y - 1;
-        }
-        if (heightMap[(y + 1) * width + x] > tempElevation)
-        {
-            tempElevation = heightMap[(y + 1) * width + x];
-            point.x = x;
-            point.y = y + 1;
-        }
-        if (heightMap[y * width + x - 1] > tempElevation)
-        {
-            tempElevation = heightMap[y * width + x - 1];
-            point.x = x - 1;
-            point.y = y;
-        }
-        if (heightMap[y * width + x + 1] > tempElevation)
-        {
-            tempElevation = heightMap[y * width + x + 1];
-            point.x = x + 1;
-            point.y = y;
-        }
-        return point;
-    };
-
-    std::vector<Point2i> flowPoints;
-    std::unordered_set<Point2i> flowPointsSet;
-    Point2i current(startX, startY);
-    elevation = heightMap[current.y * width + current.x];
-    while (elevation != 0 && elevation < 200)
-    {
-        Point2i next = highNeighbor(current.x, current.y);
-        if (next == current)
-        {
-            // Everything is the same or lower height, so have
-            // the river continue in the same direction until
-            // we find higher ground or another river.
-            if (flowPoints.size() < 2)
-            {
-                // This river is too short to continue.
-                flowPoints.clear();
-                break;
-            }
-            Point2i prev = flowPoints[flowPoints.size() - 1];
-            int dx = current.x - prev.x;
-            int dy = current.y - prev.y;
-            next.x += dx;
-            next.y += dy;
-        }
-
-        if (flowPointsSet.find(current) != flowPointsSet.end())
-        {
-            // The river formed a loop. Cut off half of it and
-            // return that part.
-            flowPoints.resize(flowPoints.size() / 2);
-            break;
-        }
-        flowPointsSet.insert(current);
-
-        flowPoints.push_back(current);
-        current = next;
-        elevation = heightMap[current.y * width + current.x];
-    }
-
-    return flowPoints;
-}
-
 std::vector<std::vector<int>> GameMap::createMask ()
 {
     Noise noise(mSeed, 1, 4);
@@ -629,6 +551,8 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
     // it around so that a high point can be aligned
     // with the crater.
     std::vector<double> noiseMap(width * height * 9);
+    double min = std::numeric_limits<double>::max();
+    double max = std::numeric_limits<double>::min();
     for (unsigned int y = 0; y < height * 3; ++y)
     {
         for (unsigned int x = 0; x < width * 3; ++x)
@@ -638,18 +562,7 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
                 static_cast<double>(y) / 64,
                 layers);
             noiseMap[y * width * 3 + x] = noiseValue;
-        }
-    }
 
-    double min = std::numeric_limits<double>::max();
-    double max = std::numeric_limits<double>::min();
-    unsigned int maxX {0};
-    unsigned int maxY {0};
-    for (unsigned int y = height; y < height * 5 / 3; ++y)
-    {
-        for (unsigned int x = width; x < width * 5 / 3; ++x)
-        {
-            double noiseValue = noiseMap[y * width * 3 + x];
             if (noiseValue < min)
             {
                 min = noiseValue;
@@ -657,6 +570,22 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
             if (noiseValue > max)
             {
                 max = noiseValue;
+            }
+        }
+    }
+
+    // Find the location of the highest point in the center third.
+    double maxCenter = std::numeric_limits<double>::min();
+    unsigned int maxX {0};
+    unsigned int maxY {0};
+    for (unsigned int y = height; y < height * 2; ++y)
+    {
+        for (unsigned int x = width; x < width * 2; ++x)
+        {
+            double noiseValue = noiseMap[y * width * 3 + x];
+            if (noiseValue > maxCenter)
+            {
+                maxCenter = noiseValue;
                 maxX = x;
                 maxY = y;
             }
@@ -667,6 +596,7 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
     double minMaxRange = max - min;
 
     std::vector<unsigned char> heightMap(width * height);
+    std::vector<GeoType> geoMap(width * height);
     for (unsigned int y = 0; y < height; ++y)
     {
         unsigned int noiseY = maxY - craterY + y;
@@ -689,30 +619,61 @@ std::vector<std::vector<GameMap::Terrain>> GameMap::create (
                 {
                     n *= (static_cast<double>(mask[y][x]) / mFadeWidth);
                 }
+
+                Point2i point(x, y);
+                geoMap[y * width + x] = DryLand {point};
+            }
+            else
+            {
+                Point2i point(x, y);
+                geoMap[y * width + x] = Ocean {point};
             }
 
             heightMap[y * width + x] = n;
         }
     }
 
-    // Calculate a random few number of rivers. The calculations
-    // are done from the coastline towards inland.
     unsigned int riverCount = dist(rng) / 30 + 1;
-    for (unsigned int i = 0; i < riverCount; ++i)
+    while (true)
     {
+        // Choose a possible starting point within the map
+        // with a 1/10 border.
         roll = dist(rng);
-        auto startIndex = roll * (mPath.size() - 1) / 100;
+        auto x = roll * (width / 10 * 8) / 100;
+        x += width / 10;
+        roll = dist(rng);
+        auto y = roll * (height / 10 * 8) / 100;
+        y += height / 10;
 
-        auto river = calculateFlow(
-            mPath[startIndex].x,
-            mPath[startIndex].y,
+        // Try to add the river with a minimum length of
+        // 1/10 of the width. This is just to make sure
+        // that the rivers are not too short.
+        if (!addRiver(
+            x,
+            y,
+            heightMap,
+            geoMap,
             width,
-            heightMap);
-
-        for (auto const & point: river)
+            height,
+            width / 10))
         {
-            heightMap[point.y * width + point.x] = 0;
+            continue;
         }
+
+        if (--riverCount == 0)
+        {
+            break;
+        }
+    }
+    for (unsigned int i = 0; i < width * height; ++i)
+    {
+        std::visit(
+            Overloaded {
+                [&heightMap, &i](auto & v) { heightMap[i] = 0; },
+                [](DryLand & v) { },
+                [](Ocean & v) { }
+            },
+            geoMap[i]);
     }
 
     std::string fileName = "./noise";

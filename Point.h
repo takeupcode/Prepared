@@ -30,6 +30,18 @@ public:
         return Point1(x >= 0 ? 1 : -1);
     }
 
+    Point1 & operator = (Point1 const & rhs)
+    {
+        if (this == &rhs)
+        {
+            return *this;
+        }
+
+        x = rhs.x;
+
+        return *this;
+    }
+
     bool operator == (Point1 const & rhs) const
     {
         return x == rhs.x;
@@ -77,6 +89,19 @@ public:
         double length = std::sqrt(x * x + y * y);
 
         return Point2(x / length, y / length);
+    }
+
+    Point2 & operator = (Point2 const & rhs)
+    {
+        if (this == &rhs)
+        {
+            return *this;
+        }
+
+        x = rhs.x;
+        y = rhs.y;
+
+        return *this;
     }
 
     bool operator == (Point2 const & rhs) const
